@@ -1,0 +1,101 @@
+use dashi::utils::*;
+use dashi::*;
+
+use crate::utils::Canvas;
+
+pub struct GraphicsPipelineInfo {
+    pub bg_layout: Handle<BindGroupLayout>,
+    pub pipeline_layout: Handle<GraphicsPipelineLayout>,
+    pub pipeline: Handle<GraphicsPipeline>,
+}
+
+pub fn make_graphics_pipeline(ctx: &mut Context, canvas: &Canvas) -> GraphicsPipelineInfo {
+    // Make the bind group layout. This describes the bindings into a shader.
+    let bg_layout = ctx
+        .make_bind_group_layout(&BindGroupLayoutInfo {
+            shaders: &[ShaderInfo {
+                shader_type: ShaderType::Vertex,
+                variables: &[BindGroupVariable {
+                    var_type: BindGroupVariableType::DynamicUniform,
+                    binding: 0,
+                }],
+            }],
+        })
+        .unwrap();
+
+    // Make a pipeline layout. This describes a graphics pipeline's state.
+    let pipeline_layout = ctx
+        .make_graphics_pipeline_layout(&GraphicsPipelineLayoutInfo {
+            vertex_info: VertexDescriptionInfo {
+                entries: &[VertexEntryInfo {
+                    format: ShaderPrimitiveType::Vec2,
+                    location: 0,
+                    offset: 0,
+                }],
+                stride: 8,
+                rate: VertexRate::Vertex,
+            },
+            bg_layout,
+            shaders: &[
+                PipelineShaderInfo {
+                    stage: ShaderType::Vertex,
+                    spirv: inline_spirv::inline_spirv!(
+                        r#"
+#version 450
+layout(location = 0) in vec2 in_position;
+layout(location = 1) in vec2 in_tex;
+
+layout(binding = 0) uniform position_offset {
+    mat4 transform;
+};
+
+layout(binding = 1) uniform camera_offset {
+    vec2 camera;
+};
+
+void main() {
+    vec4 position = transform * vec4(in_position, 0.0, 1.0);
+    position -= vec4(camera.xy, 0.0, 0.0);
+    gl_Position = position;
+}
+"#,
+                        vert
+                    ),
+                    specialization: &[],
+                },
+                PipelineShaderInfo {
+                    stage: ShaderType::Fragment,
+                    spirv: inline_spirv::inline_spirv!(
+                        r#"
+    #version 450 core
+    layout(location = 0) in vec2 frag_coords;
+    layout(location = 0) out vec4 out_color;
+    layout(binding = 2) uniform sampler2D in_image;
+
+    void main() { 
+        out_color = texture(in_image, frag_coords); 
+    }
+"#,
+                        frag
+                    ),
+                    specialization: &[],
+                },
+            ],
+            details: Default::default(),
+        })
+        .expect("Unable to create GFX Pipeline Layout!");
+
+    // Make a graphics pipeline. This matches a pipeline layout to a render pass.
+    let pipeline = ctx
+        .make_graphics_pipeline(&dashi::GraphicsPipelineInfo {
+            layout: pipeline_layout,
+            render_pass: canvas.render_pass(),
+        })
+        .unwrap();
+
+    GraphicsPipelineInfo {
+        bg_layout,
+        pipeline_layout,
+        pipeline,
+    }
+}
