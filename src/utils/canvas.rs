@@ -33,6 +33,7 @@ pub struct Canvas {
     name: String,
     viewport: Viewport,
     color_images: Vec<Handle<Image>>,
+    color_views: Vec<Handle<ImageView>>,
     depth: Option<Handle<Image>>,
     render_pass: Handle<RenderPass>,
 }
@@ -49,10 +50,15 @@ impl Canvas {
         return self.name.clone();
     }
 
+    pub fn color_attachment(&self, idx: u32) -> Handle<ImageView> {
+        self.color_views[idx as usize]
+    }
+
     pub fn from_json(ctx: &mut Context, path: &str) -> Self {
         let json_data = fs::read_to_string(path).expect("Failed to read JSON for Canvas!");
-        let info: CanvasJSONInfo = serde_json::from_str(&json_data).expect("Failed to read Canvas from JSON!");
-        
+        let info: CanvasJSONInfo =
+            serde_json::from_str(&json_data).expect("Failed to read Canvas from JSON!");
+
         // Fn to convert CanvasAttachment -> tuple (img, view, dashi attachment)
         let mut attach_to_tuple = |a: CanvasAttachment| {
             let img = ctx
@@ -87,10 +93,11 @@ impl Canvas {
             return (img, view, attachment);
         };
 
-        let colors: Vec<(Handle<Image>, Handle<ImageView>, Attachment)> =
-            info.color_attachments.into_iter().map(|a| {
-                attach_to_tuple(a)
-            }).collect();
+        let colors: Vec<(Handle<Image>, Handle<ImageView>, Attachment)> = info
+            .color_attachments
+            .into_iter()
+            .map(|a| attach_to_tuple(a))
+            .collect();
 
         let (imgs, views, attachs): (Vec<_>, Vec<_>, Vec<_>) = colors.iter().cloned().unzip3();
 
@@ -116,6 +123,7 @@ impl Canvas {
             depth,
             render_pass,
             name: info.name,
+            color_views: views,
         }
     }
 
@@ -216,6 +224,7 @@ impl Canvas {
                             }),
                         })
                         .unwrap(),
+                    color_views: vec![fb_view],
                 };
             }
         }

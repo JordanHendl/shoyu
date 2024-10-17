@@ -9,6 +9,7 @@ pub struct SpriteInfo<'a> {
 pub struct Sprite {
     pub dim: [u32; 2],
     pub handle: Handle<Image>,
+    pub view: Handle<ImageView>,
     pub bg: Handle<BindGroup>,
 }
 
@@ -20,5 +21,6 @@ pub struct SpriteSheetInfo<'a> {
 pub struct SpriteSheet {
     pub dim: [u32; 2],
     pub handle: Handle<Image>,
+    pub view: Handle<ImageView>,
     pub bg: Handle<BindGroup>,
 }

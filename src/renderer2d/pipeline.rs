@@ -13,13 +13,28 @@ pub fn make_graphics_pipeline(ctx: &mut Context, canvas: &Canvas) -> GraphicsPip
     // Make the bind group layout. This describes the bindings into a shader.
     let bg_layout = ctx
         .make_bind_group_layout(&BindGroupLayoutInfo {
-            shaders: &[ShaderInfo {
-                shader_type: ShaderType::Vertex,
-                variables: &[BindGroupVariable {
-                    var_type: BindGroupVariableType::DynamicUniform,
-                    binding: 0,
-                }],
-            }],
+            shaders: &[
+                ShaderInfo {
+                    shader_type: ShaderType::Vertex,
+                    variables: &[
+                        BindGroupVariable {
+                            var_type: BindGroupVariableType::DynamicUniform,
+                            binding: 0,
+                        },
+                        BindGroupVariable {
+                            var_type: BindGroupVariableType::DynamicUniform,
+                            binding: 1,
+                        },
+                    ],
+                },
+                ShaderInfo {
+                    shader_type: ShaderType::Fragment,
+                    variables: &[BindGroupVariable {
+                        var_type: BindGroupVariableType::SampledImage,
+                        binding: 2,
+                    }],
+                },
+            ],
         })
         .unwrap();
 
@@ -27,12 +42,19 @@ pub fn make_graphics_pipeline(ctx: &mut Context, canvas: &Canvas) -> GraphicsPip
     let pipeline_layout = ctx
         .make_graphics_pipeline_layout(&GraphicsPipelineLayoutInfo {
             vertex_info: VertexDescriptionInfo {
-                entries: &[VertexEntryInfo {
-                    format: ShaderPrimitiveType::Vec2,
-                    location: 0,
-                    offset: 0,
-                }],
-                stride: 8,
+                entries: &[
+                    VertexEntryInfo {
+                        format: ShaderPrimitiveType::Vec2,
+                        location: 0,
+                        offset: 0,
+                    },
+                    VertexEntryInfo {
+                        format: ShaderPrimitiveType::Vec2,
+                        location: 1,
+                        offset: 8,
+                    },
+                ],
+                stride: 16,
                 rate: VertexRate::Vertex,
             },
             bg_layout,
@@ -44,6 +66,7 @@ pub fn make_graphics_pipeline(ctx: &mut Context, canvas: &Canvas) -> GraphicsPip
 #version 450
 layout(location = 0) in vec2 in_position;
 layout(location = 1) in vec2 in_tex;
+layout(location = 0) out vec2 frag_coords;
 
 layout(binding = 0) uniform position_offset {
     mat4 transform;
@@ -57,6 +80,7 @@ void main() {
     vec4 position = transform * vec4(in_position, 0.0, 1.0);
     position -= vec4(camera.xy, 0.0, 0.0);
     gl_Position = position;
+    frag_coords = in_tex;
 }
 "#,
                         vert
