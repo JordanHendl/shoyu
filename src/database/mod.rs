@@ -9,11 +9,14 @@ mod load_funcs;
 use load_funcs::*;
 mod images;
 use images::*;
+mod font;
+use font::*;
 
 pub struct Database {
     base_path: String,
     sprites: HashMap<String, SpriteEntry>,
     sprite_sheets: HashMap<String, SpriteSheetEntry>,
+    ttfs: HashMap<String, TTFEntry>,
 }
 
 impl Database {
@@ -29,6 +32,11 @@ impl Database {
         Ok(info)
     }
 
+    fn get_ttf_json(path: &str) -> Result<TTFJSON, Error> {
+        let json_data = fs::read_to_string(path)?;
+        let info: TTFJSON = serde_json::from_str(&json_data)?;
+        Ok(info)
+    }
     pub fn new(base_path: &str) -> Result<Self, Error> {
         let json_data = fs::read_to_string(format!("{}/shoyu.json", base_path))?;
 
@@ -54,16 +62,42 @@ impl Database {
             HashMap::new()
         };
 
+        let ttfs = if let Some(ttf) = info.ttf_cfg {
+            parse_ttfs(Database::get_ttf_json(&format!(
+                "{}/{}",
+                base_path,
+                ttf.as_str()
+            ))?)
+        } else {
+            HashMap::new()
+        };
+
         Ok(Database {
             base_path: base_path.to_string(),
             sprites,
             sprite_sheets,
+            ttfs,
         })
     }
 
     pub fn fetch_sprite(&mut self, name: &str) -> Result<&SpriteEntry, Error> {
         // TODO probably async this.
         if let Some(entry) = self.sprites.get_mut(name) {
+            if entry.loaded.is_none() {
+                entry.load(&self.base_path);
+            }
+
+            return Ok(entry);
+        }
+
+        return Err(Error::LookupError(LookupError {
+            entry: name.to_string(),
+        }));
+    }
+
+    pub fn fetch_ttf(&mut self, name: &str) -> Result<&TTFEntry, Error> {
+        // TODO probably async this.
+        if let Some(entry) = self.ttfs.get_mut(name) {
             if entry.loaded.is_none() {
                 entry.load(&self.base_path);
             }

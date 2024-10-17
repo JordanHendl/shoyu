@@ -1,4 +1,5 @@
 use glam::*;
+use io::*;
 use renderer2d::SpriteDrawCommand;
 use renderer2d::SpriteInfo;
 use sdl2::event::Event;
@@ -26,72 +27,35 @@ fn main() {
 
     let mut pos = vec2(0.0, 0.0);
     let mut rot = 0.0;
-    let mut event_pump = ctx.get_sdl_event();
-    let mut pup = false;
-    let mut pdown = false;
+
+    let mut io_controller = IOController::new(ctx.get_sdl_ctx());
+    io_controller.map_action("up", vec![Keycode::W]);
+    io_controller.map_action("down", vec![Keycode::S]);
+    io_controller.map_action("left", vec![Keycode::A]);
+    io_controller.map_action("right", vec![Keycode::D]);
+    io_controller.map_action("rotate", vec![Keycode::Q]);
+
     'running: loop {
-        // Listen to events
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => {
-                    break 'running;
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::D),
-                    ..
-                } => {
-                    pos = vec2(pos.x() + 0.01, pos.y());
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::A),
-                    ..
-                } => {
-                    pos = vec2(pos.x() - 0.01, pos.y());
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::W),
-                    ..
-                } => {
-                    pup = true;
-                }
-                Event::KeyUp {
-                    keycode: Some(Keycode::W),
-                    ..
-                } => {
-                    pup = false;
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::S),
-                    ..
-                } => {
-                    pdown = true;
-                }
-                Event::KeyUp {
-                    keycode: Some(Keycode::S),
-                    ..
-                } => {
-                    pdown = false;
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::Q),
-                    ..
-                } => {
-                    rot += 1.1;
-                }
-                _ => {}
-            }
+        io_controller.update();
+
+        if io_controller.event_cache().is_quit() {
+            break 'running;
         }
 
-        if pdown {
+        if io_controller.is_action_active("left") {
+            pos = vec2(pos.x() - 0.01, pos.y());
+        }
+        if io_controller.is_action_active("right") {
+            pos = vec2(pos.x() + 0.01, pos.y());
+        }
+        if io_controller.is_action_active("up") {
+            pos = vec2(pos.x(), pos.y() - 0.01);
+        }
+        if io_controller.is_action_active("down") {
             pos = vec2(pos.x(), pos.y() + 0.01);
         }
-
-        if pup {
-            pos = vec2(pos.x(), pos.y() - 0.01);
+        if io_controller.is_action_active("rotate") {
+            rot += 1.0;
         }
 
         renderer.begin_drawing();

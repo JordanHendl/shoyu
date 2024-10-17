@@ -101,7 +101,7 @@ impl Renderer2D {
 
             // Signal the context to free our command list on the next submit call. This is nice so
             // that we don't have to manually manage it.
-//            (*self.ctx).release_list_on_next_submit(fence, self.cmd);
+            (*self.ctx).release_list_on_next_submit(fence, self.cmd.clone());
         }
     }
     pub fn resources(&mut self) -> &mut ResourceManager {

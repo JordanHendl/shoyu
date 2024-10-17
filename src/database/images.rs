@@ -1,5 +1,6 @@
 use super::json::*;
 use super::load_funcs::*;
+use super::TTFont;
 use std::collections::HashMap;
 
 pub struct SpriteEntry {
@@ -36,6 +37,22 @@ impl SpriteSheetEntry {
     }
 }
 
+pub struct TTFEntry {
+    pub cfg: TTFJSONEntry,
+    pub loaded: Option<TTFont>,
+}
+
+impl TTFEntry {
+    pub fn load(&mut self, base_path: &str) {
+        self.loaded = Some(
+            TTFont::new(&format!("{}/{}", base_path, self.cfg.path.as_str()), self.cfg.size as f32),
+        );
+    }
+
+    pub fn unload(&mut self) {
+        self.loaded = None;
+    }
+}
 pub fn parse_sprite_sheets(info: SpriteSheetJSON) -> HashMap<String, SpriteSheetEntry> {
     let tup_vec: Vec<(String, SpriteSheetEntry)> = info
         .sprite_sheets
@@ -71,3 +88,22 @@ pub fn parse_sprites(info: SpriteJSON) -> HashMap<String, SpriteEntry> {
 
     return tup_vec.into_iter().collect();
 }
+
+pub fn parse_ttfs(info: TTFJSON) -> HashMap<String, TTFEntry> {
+    let tup_vec: Vec<(String, TTFEntry)> = info
+        .fonts
+        .into_iter()
+        .map(|a| {
+            (
+                a.name.clone(),
+                TTFEntry {
+                    cfg: a.clone(),
+                    loaded: None,
+                },
+            )
+        })
+        .collect();
+
+    return tup_vec.into_iter().collect();
+}
+
