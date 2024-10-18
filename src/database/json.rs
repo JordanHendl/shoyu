@@ -28,6 +28,7 @@ pub struct TTFJSONEntry {
     pub name: String,
     pub path: String,
     pub size: f64,
+    pub glyphs: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]

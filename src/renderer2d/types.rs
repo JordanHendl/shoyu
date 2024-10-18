@@ -24,3 +24,10 @@ pub struct SpriteSheet {
     pub view: Handle<ImageView>,
     pub bg: Handle<BindGroup>,
 }
+
+pub struct Font {
+    pub dim: [u32; 2],
+    pub atlas: Handle<Image>,
+    pub bg: Handle<BindGroup>,
+}
+

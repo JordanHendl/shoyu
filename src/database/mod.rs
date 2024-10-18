@@ -96,10 +96,21 @@ impl Database {
     }
 
     pub fn fetch_ttf(&mut self, name: &str) -> Result<&TTFEntry, Error> {
+        let default_typeset:  Vec<char> = (0 as u8 as char..127 as u8 as char).collect();
         // TODO probably async this.
         if let Some(entry) = self.ttfs.get_mut(name) {
             if entry.loaded.is_none() {
-                entry.load(&self.base_path);
+                let mut str = Vec::new();
+                let glyphs: &[char] = match entry.cfg.glyphs.clone() {
+                    Some(g) => {
+                        str = g.chars().collect();
+                        &str
+                    },
+                    None => {
+                        &default_typeset    
+                    }
+                };
+                entry.load(&self.base_path, glyphs);
             }
 
             return Ok(entry);

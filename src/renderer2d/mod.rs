@@ -35,6 +35,12 @@ pub struct SpriteSheetDrawCommand {
     pub flip: bool,
 }
 
+pub struct TextDrawCommand<'a> {
+    pub font: Handle<Font>,
+    pub position: glam::Vec2,
+    pub size: glam::Vec2,
+    pub text: &'a str,
+}
 impl Renderer2D {
     pub fn new(ctx: &mut Context, database: Database, canvas: Canvas) -> Self {
         let display = ctx

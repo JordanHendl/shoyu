@@ -43,9 +43,9 @@ pub struct TTFEntry {
 }
 
 impl TTFEntry {
-    pub fn load(&mut self, base_path: &str) {
+    pub fn load(&mut self, base_path: &str, typeset: &[char]) {
         self.loaded = Some(
-            TTFont::new(&format!("{}/{}", base_path, self.cfg.path.as_str()), self.cfg.size as f32),
+            TTFont::new(&format!("{}/{}", base_path, self.cfg.path.as_str()), 1280, 1024, self.cfg.size as f32, typeset),
         );
     }
 
