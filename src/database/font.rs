@@ -4,16 +4,16 @@ use std::fs::File;
 use std::io::Read;
 
 #[derive(Debug)]
-struct Glyph {
-    bounds: Rect2D, // where this glyph is in the atlas
-    advance: f32,
+pub struct Glyph {
+    pub bounds: Rect2D, // where this glyph is in the atlas
+    pub advance: f32,
 }
 
 pub struct TTFont {
-    glyphs: HashMap<char, Glyph>,
-    atlas: Option<Vec<u8>>, // Cache for the entire glyph atlas as a single image
-    atlas_width: u32,
-    atlas_height: u32,
+    pub glyphs: HashMap<char, Glyph>,
+    pub atlas: Option<Vec<u8>>, // Cache for the entire glyph atlas as a single image
+    pub atlas_width: u32,
+    pub atlas_height: u32,
 }
 
 impl TTFont {
@@ -22,10 +22,10 @@ impl TTFont {
         // Create a new bitmap (initialized to zero)
         let mut bitmap = vec![0u8; (width * height) as usize];
 
-        let mut file = File::open(file_path).unwrap();
-        let mut font_data = Vec::new();
-        file.read_to_end(&mut font_data).unwrap();
-        // Parse it into the font type.
+//        let mut file = File::open(file_path).unwrap();
+//        let mut font_data = Vec::new();
+//        file.read_to_end(&mut font_data).unwrap();
+        let font_data = std::fs::read(file_path).unwrap();
         let font = fontdue::Font::from_bytes(font_data, fontdue::FontSettings::default()).unwrap();
 
         // Coordinates to keep track of where to draw the next glyph

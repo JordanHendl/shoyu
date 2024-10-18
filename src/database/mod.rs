@@ -9,8 +9,8 @@ mod load_funcs;
 use load_funcs::*;
 mod images;
 use images::*;
-mod font;
-use font::*;
+pub mod font;
+pub use font::*;
 
 pub struct Database {
     base_path: String,

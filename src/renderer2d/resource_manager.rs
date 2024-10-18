@@ -12,11 +12,13 @@ pub struct ResourceManager {
     canvas: Canvas,
     database: Database,
     sprites: Pool<Sprite>,
+    fonts: Pool<Font>,
     gfx: pipeline::GraphicsPipelineInfo,
     sampler: Handle<Sampler>,
     sprite_sheets: Pool<SpriteSheet>,
 }
 
+#[repr(C)]
 struct Vertex {
     position: [f32; 2],
     tex_coords: [f32; 2],
@@ -85,6 +87,7 @@ impl ResourceManager {
             database,
             sprites: Default::default(),
             sprite_sheets: Default::default(),
+            fonts: Default::default(),
             vertices,
             indices,
             allocator,
@@ -96,7 +99,7 @@ impl ResourceManager {
     pub fn canvas(&self) -> &Canvas {
         return &self.canvas;
     }
-    
+
     pub fn gfx(&self) -> &pipeline::GraphicsPipelineInfo {
         &self.gfx
     }
@@ -117,8 +120,71 @@ impl ResourceManager {
         Some(self.sprites.get_mut_ref(handle)?)
     }
 
+    pub fn fetch_font(&mut self, handle: Handle<Font>) -> Option<&mut Font> {
+        Some(self.fonts.get_mut_ref(handle)?)
+    }
+
     pub fn fetch_sprite_sheet(&mut self, handle: Handle<SpriteSheet>) -> Option<&mut SpriteSheet> {
         Some(self.sprite_sheets.get_mut_ref(handle)?)
+    }
+
+    pub fn make_font(&mut self, info: &FontInfo) -> Handle<Font> {
+        let img: *const TTFont = self
+            .database
+            .fetch_ttf(info.db_key)
+            .unwrap()
+            .loaded
+            .as_ref()
+            .unwrap();
+
+        unsafe {
+            let size = ((*img).atlas_width, (*img).atlas_height);
+            let initial_data = (*img).atlas.as_ref().unwrap();
+            let spr = (*self.ctx)
+                .make_image(&ImageInfo {
+                    debug_name: info.name,
+                    dim: [size.0, size.1, 1],
+                    format: Format::R8,
+                    mip_levels: 1,
+                    initial_data: Some(initial_data),
+                })
+                .unwrap();
+
+            let spr_view = (*self.ctx)
+                .make_image_view(&ImageViewInfo {
+                    debug_name: info.name,
+                    img: spr,
+                    ..Default::default()
+                })
+                .unwrap();
+
+            return self
+                .fonts
+                .insert(Font {
+                    dim: [size.0, size.1],
+                    atlas: spr,
+                    atlas_view: spr_view,
+                    bg: (*self.ctx)
+                        .make_bind_group(&BindGroupInfo {
+                            layout: self.gfx.text_bg_layout,
+                            bindings: &[
+                                BindingInfo {
+                                    resource: ShaderResource::Dynamic(&self.allocator),
+                                    binding: 1,
+                                },
+                                BindingInfo {
+                                    resource: ShaderResource::SampledImage(spr_view, self.sampler),
+                                    binding: 2,
+                                },
+                            ],
+                            ..Default::default()
+                        })
+                        .unwrap(),
+                    font: img,
+                })
+                .unwrap();
+
+        }
     }
 
     pub fn make_sprite(&mut self, info: &SpriteInfo) -> Handle<Sprite> {

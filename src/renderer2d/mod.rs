@@ -1,4 +1,5 @@
 pub mod types;
+use glam::{vec2, vec4};
 pub use types::*;
 pub mod resource_manager;
 pub use resource_manager::*;
@@ -38,7 +39,6 @@ pub struct SpriteSheetDrawCommand {
 pub struct TextDrawCommand<'a> {
     pub font: Handle<Font>,
     pub position: glam::Vec2,
-    pub size: glam::Vec2,
     pub text: &'a str,
 }
 impl Renderer2D {
@@ -99,7 +99,9 @@ impl Renderer2D {
             });
 
             // Submit our recorded commands
-            let (sem, fence) = (*self.ctx).submit(&mut self.cmd, Some(&[self.display_sem])).unwrap();
+            let (sem, fence) = (*self.ctx)
+                .submit(&mut self.cmd, Some(&[self.display_sem]))
+                .unwrap();
 
             // Present the display image, waiting on the semaphore that will signal when our
             // drawing/blitting is done.
@@ -114,6 +116,87 @@ impl Renderer2D {
         return &mut self.manager;
     }
 
+    pub fn draw_text(&mut self, cmd: &TextDrawCommand) {
+        #[repr(C)]
+        struct TextVertex {
+            pos: glam::Vec2,
+            tex: glam::Vec2,
+        }
+
+        let font_bg = self.manager.fetch_font(cmd.font).unwrap().bg;
+        let view = self.manager.fetch_font(cmd.font).unwrap().atlas_view;
+        let font = self.manager.fetch_font(cmd.font).unwrap().font;
+        let dim = self.manager.fetch_font(cmd.font).unwrap().dim;
+        self.cmd
+            .begin_drawing(&DrawBegin {
+                viewport: self.manager.canvas().viewport(),
+                pipeline: self.manager.gfx().text_pipeline,
+            })
+            .unwrap();
+
+        for ch in cmd.text.chars() {
+            unsafe {
+                if let Some(g) = (*font).glyphs.get(&ch) {
+                    let mut vert_alloc = self.manager.allocator().bump().unwrap();
+                    let mut index_alloc = self.manager.allocator().bump().unwrap();
+                    let mut info = self.manager.allocator().bump().unwrap();
+                    let mut vertices = vert_alloc.slice::<TextVertex>();
+                    let mut indices = index_alloc.slice::<u32>();
+                    let mut color = info.slice::<glam::Vec4>();
+
+                    color[0] = vec4(1.0, 1.0, 1.0, 1.0);
+
+                    let fbounds = FRect2D {
+                        x: g.bounds.x as f32 / dim[0] as f32,
+                        y: g.bounds.y as f32 / dim[1] as f32,
+                        w: g.bounds.w as f32 / dim[0] as f32,
+                        h: g.bounds.h as f32 / dim[1] as f32,
+                    };
+
+                    let glyph_width = fbounds.w - fbounds.x;
+                    let glyph_height = fbounds.h - fbounds.y;
+                    //todo fill
+                    vertices[0] = TextVertex {
+                        pos: cmd.position,
+                        tex: vec2(fbounds.x, fbounds.y),
+                    };
+                    vertices[1] = TextVertex {
+                        pos: vec2(cmd.position.x(), cmd.position.y() + glyph_height),
+                        tex: vec2(fbounds.x, fbounds.h),
+                    };
+                    vertices[2] = TextVertex {
+                        pos: vec2(
+                            cmd.position.x() + glyph_width,
+                            cmd.position.y() + glyph_height,
+                        ),
+                        tex: vec2(fbounds.w, fbounds.h),
+                    };
+                    vertices[3] = TextVertex {
+                        pos: vec2(cmd.position.x() + glyph_width, cmd.position.y()),
+                        tex: vec2(fbounds.w, fbounds.y),
+                    };
+
+                    indices[0] = 0;
+                    indices[1] = 1;
+                    indices[2] = 2;
+                    indices[3] = 2;
+                    indices[4] = 3;
+                    indices[5] = 0;
+
+                    self.cmd.draw_indexed(&DrawIndexed {
+                        vertices: vert_alloc.handle(),
+                        indices: index_alloc.handle(),
+                        dynamic_buffers: [Some(info), None, None, None],
+                        bind_groups: [Some(font_bg), None, None, None],
+                        vert_offset: vert_alloc.offset(),
+                        index_offset: index_alloc.offset(),
+                        index_count: 6,
+                        ..Default::default()
+                    });
+                }
+            }
+        }
+    }
     pub fn draw_sprite(&mut self, cmd: &SpriteDrawCommand) {
         let mut b1 = self.manager.allocator().bump().unwrap();
         let mut b2 = self.manager.allocator().bump().unwrap();

@@ -5,6 +5,8 @@ use renderer2d::SpriteInfo;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use shoyu::database::*;
+use shoyu::renderer2d::FontInfo;
+use shoyu::renderer2d::TextDrawCommand;
 use shoyu::utils::*;
 use shoyu::*;
 use std::env;
@@ -23,6 +25,11 @@ fn main() {
     let sprite = renderer.resources().make_sprite(&SpriteInfo {
         name: "test",
         db_key: "name",
+    });
+    
+    let font = renderer.resources().make_font(&FontInfo {
+        name: "font",
+        db_key: "font",
     });
 
     let mut pos = vec2(0.0, 0.0);
@@ -65,6 +72,12 @@ fn main() {
             size: vec2(0.5, 0.5),
             rotation: rot,
             flip: false,
+        });
+        
+        renderer.draw_text(&TextDrawCommand {
+            font,
+            position: vec2(0.0, 0.0),
+            text: "lmao!!!",
         });
 
         renderer.finish_drawing();

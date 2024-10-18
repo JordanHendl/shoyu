@@ -1,5 +1,11 @@
+use crate::database::font::*;
 use dashi::utils::*;
 use dashi::*;
+
+pub struct FontInfo<'a> {
+    pub name: &'a str,
+    pub db_key: &'a str,
+}
 
 pub struct SpriteInfo<'a> {
     pub name: &'a str,
@@ -28,6 +34,7 @@ pub struct SpriteSheet {
 pub struct Font {
     pub dim: [u32; 2],
     pub atlas: Handle<Image>,
+    pub atlas_view: Handle<ImageView>,
+    pub font: *const TTFont,
     pub bg: Handle<BindGroup>,
 }
-
