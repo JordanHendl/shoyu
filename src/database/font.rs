@@ -7,6 +7,8 @@ use std::io::Read;
 pub struct Glyph {
     pub bounds: Rect2D, // where this glyph is in the atlas
     pub advance: f32,
+    pub bearing_x: f32,
+    pub bearing_y: f32,
 }
 
 pub struct TTFont {
@@ -22,42 +24,43 @@ impl TTFont {
         // Create a new bitmap (initialized to zero)
         let mut bitmap = vec![0u8; (width * height) as usize];
 
-//        let mut file = File::open(file_path).unwrap();
-//        let mut font_data = Vec::new();
-//        file.read_to_end(&mut font_data).unwrap();
+        //        let mut file = File::open(file_path).unwrap();
+        //        let mut font_data = Vec::new();
+        //        file.read_to_end(&mut font_data).unwrap();
         let font_data = std::fs::read(file_path).unwrap();
-        let font = fontdue::Font::from_bytes(font_data, fontdue::FontSettings::default()).unwrap();
+        let font = fontdue::Font::from_bytes(font_data, fontdue::FontSettings {
+            scale: 80.0,
+            ..Default::default()
+        }).unwrap();
 
         // Coordinates to keep track of where to draw the next glyph
-        let mut cursor_x = 0;
-        let mut cursor_y = 0;
+        let mut cursor_x: u32 = 0;
+        let mut cursor_y: u32 = 0;
         let mut line_height = 0;
         let mut glyph_map = HashMap::new();
+        let mut max_height_in_line: f32 = 0.0; // Track the tallest glyph in the line
 
         for ch in range {
-            let (metrics, bitmap_data) = font.rasterize_indexed(font.lookup_glyph_index(*ch), font_size);
+            let (metrics, bitmap_data) =
+                font.rasterize_indexed(font.lookup_glyph_index(*ch), font_size);
             {
-                // If the character doesn't fit in the current row, move to the next row
-                if cursor_x + metrics.width >= width as usize {
-                    cursor_x = 0;
-                    cursor_y += line_height;
-                    line_height = 0;
+                // Calculate the glyph position taking bearing into account
+                let xpos = (cursor_x as f32 + metrics.xmin as f32).max(0.0) as usize;
+                let ypos = (cursor_y as f32 + metrics.ymin as f32).max(0.0) as usize;
+
+                // Update the max height for the current line
+                max_height_in_line =
+                    max_height_in_line.max(metrics.height as f32 - metrics.ymin as f32);
+
+                // Draw the glyph bitmap at the calculated position
+                for (i, &pixel) in bitmap_data.iter().enumerate() {
+                    let px = i % metrics.width;
+                    let py = i / metrics.width;
+                    let x = (cursor_x as usize) + px;
+                    let y = (cursor_y as usize) + py;
+                    bitmap[y * width as usize + x] = pixel;
                 }
 
-                // If the character doesn't fit in the current bitmap, break
-                if cursor_y + metrics.height >= height as usize {
-                    break;
-                }
-
-                // Draw the glyph into the bitmap
-                for y in 0..metrics.height {
-                    for x in 0..metrics.width {
-                        let bitmap_x = cursor_x + x;
-                        let bitmap_y = cursor_y + y;
-                        let bitmap_index = bitmap_y * width as usize + bitmap_x;
-                        bitmap[bitmap_index as usize] = bitmap_data[y * metrics.width + x];
-                    }
-                }
 
                 // Store the glyph boundary
                 glyph_map.insert(
@@ -69,13 +72,19 @@ impl TTFont {
                             w: metrics.width as u32,
                             h: metrics.height as u32,
                         },
-                        advance: metrics.advance_width,
+                        advance: metrics.advance_width / (width as f32),
+                        bearing_x: metrics.xmin as f32 / width as f32,
+                        bearing_y: metrics.ymin as f32 / height as f32,
                     },
                 );
-
-                // Update the cursor and line height
-                cursor_x += metrics.width;
-                line_height = line_height.max(metrics.height);
+                // Move the cursor forward by the advance width
+                cursor_x += metrics.advance_width as u32;
+                // If the cursor_x exceeds the bitmap width, move to the next line
+                if cursor_x >= width {
+                    cursor_x = 0;
+                    cursor_y += max_height_in_line as u32; // Move down by the tallest glyph in the line
+                    max_height_in_line = 0.0; // Reset for the next line
+                }
             }
         }
 

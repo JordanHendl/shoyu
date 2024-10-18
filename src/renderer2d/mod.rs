@@ -118,6 +118,7 @@ impl Renderer2D {
 
     pub fn draw_text(&mut self, cmd: &TextDrawCommand) {
         #[repr(C)]
+        #[derive(Clone, Copy)]
         struct TextVertex {
             pos: glam::Vec2,
             tex: glam::Vec2,
@@ -134,55 +135,54 @@ impl Renderer2D {
             })
             .unwrap();
 
+        let mut xpos = cmd.position.x();
+        let mut ypos = cmd.position.y();
+        let mut xoff = vec2(0.0, 0.0);
+        let mut yoff = vec2(0.0, 0.0);
         for ch in cmd.text.chars() {
             unsafe {
                 if let Some(g) = (*font).glyphs.get(&ch) {
                     let mut vert_alloc = self.manager.allocator().bump().unwrap();
                     let mut index_alloc = self.manager.allocator().bump().unwrap();
                     let mut info = self.manager.allocator().bump().unwrap();
-                    let mut vertices = vert_alloc.slice::<TextVertex>();
-                    let mut indices = index_alloc.slice::<u32>();
+                    let mut vertices = vert_alloc.slice::<TextVertex>().split_at_mut(4).0;
+                    let mut indices = index_alloc.slice::<u32>().split_at_mut(6).0;
                     let mut color = info.slice::<glam::Vec4>();
 
                     color[0] = vec4(1.0, 1.0, 1.0, 1.0);
 
-                    let fbounds = FRect2D {
-                        x: g.bounds.x as f32 / dim[0] as f32,
-                        y: g.bounds.y as f32 / dim[1] as f32,
-                        w: g.bounds.w as f32 / dim[0] as f32,
-                        h: g.bounds.h as f32 / dim[1] as f32,
-                    };
+                    let x0 = xpos - g.bearing_x;
+                    let y0 = xpos - g.bearing_y;
+                    let x1 = x0 + (g.bounds.w as f32 / dim[0] as f32);
+                    let y1 = y0 + (g.bounds.h as f32 / dim[1] as f32);
 
-                    let glyph_width = fbounds.w - fbounds.x;
-                    let glyph_height = fbounds.h - fbounds.y;
-                    //todo fill
-                    vertices[0] = TextVertex {
-                        pos: cmd.position,
-                        tex: vec2(fbounds.x, fbounds.y),
-                    };
-                    vertices[1] = TextVertex {
-                        pos: vec2(cmd.position.x(), cmd.position.y() + glyph_height),
-                        tex: vec2(fbounds.x, fbounds.h),
-                    };
-                    vertices[2] = TextVertex {
-                        pos: vec2(
-                            cmd.position.x() + glyph_width,
-                            cmd.position.y() + glyph_height,
-                        ),
-                        tex: vec2(fbounds.w, fbounds.h),
-                    };
-                    vertices[3] = TextVertex {
-                        pos: vec2(cmd.position.x() + glyph_width, cmd.position.y()),
-                        tex: vec2(fbounds.w, fbounds.y),
-                    };
+                    let tex_x0 = (g.bounds.x as f32 / dim[0] as f32) as f32;
+                    let tex_y0 = (g.bounds.y as f32 / dim[1] as f32) as f32;
 
-                    indices[0] = 0;
-                    indices[1] = 1;
-                    indices[2] = 2;
-                    indices[3] = 2;
-                    indices[4] = 3;
-                    indices[5] = 0;
+                    let tex_x1 = tex_x0 + (g.bounds.w as f32 / dim[0] as f32);
+                    let tex_y1 = tex_y0 + (g.bounds.h as f32 / dim[1] as f32);
 
+                    vertices.copy_from_slice(&[
+                        TextVertex {
+                            pos: vec2(x0, y0),
+                            tex: vec2(tex_x0, tex_y0),
+                        },
+                        TextVertex {
+                            pos: vec2(x0, y1),
+                            tex: vec2(tex_x0, tex_y1),
+                        },
+                        TextVertex {
+                            pos: vec2(x1, y1),
+                            tex: vec2(tex_x1, tex_y1),
+                        },
+                        TextVertex {
+                            pos: vec2(x1, y0),
+                            tex: vec2(tex_x1, tex_y0),
+                        },
+                    ]);
+
+                    indices.copy_from_slice(&[0, 1, 2, 2, 3, 0]);
+                    xpos += g.advance;
                     self.cmd.draw_indexed(&DrawIndexed {
                         vertices: vert_alloc.handle(),
                         indices: index_alloc.handle(),
