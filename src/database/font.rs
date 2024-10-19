@@ -35,9 +35,8 @@ impl TTFont {
         .unwrap();
 
         // Coordinates to keep track of where to draw the next glyph
-        let mut cursor_x: u32 = 0;
+        let mut cursor_x: u32 = font_size as u32;
         let mut cursor_y: u32 = font_size as u32;
-        let mut line_height = 0;
         let mut glyph_map = HashMap::new();
         let mut max_height_in_line: f32 = 0.0; // Track the tallest glyph in the line
 
@@ -45,10 +44,6 @@ impl TTFont {
             let (metrics, bitmap_data) =
                 font.rasterize_indexed(font.lookup_glyph_index(*ch), font_size);
             {
-                // Calculate the glyph position taking bearing into account
-                let xpos = (cursor_x as f32 + metrics.xmin as f32).max(0.0) as usize;
-                let ypos = (cursor_y as f32 + metrics.ymin as f32).max(0.0) as usize;
-
                 // Update the max height for the current line
                 max_height_in_line =
                     max_height_in_line.max(metrics.height as f32 - metrics.ymin as f32);
@@ -83,8 +78,8 @@ impl TTFont {
 
                 // If the cursor_x exceeds the bitmap width, move to the next line
                 if cursor_x >= width {
-                    cursor_x = 0;
-                    cursor_y += max_height_in_line as u32; // Move down by the tallest glyph in the line
+                    cursor_x = font_size as u32;
+                    cursor_y += max_height_in_line as u32 + font_size as u32; // Move down by the tallest glyph in the line
                     max_height_in_line = 0.0; // Reset for the next line
                 }
             }

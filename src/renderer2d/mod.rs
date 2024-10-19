@@ -125,10 +125,10 @@ impl Renderer2D {
             tex: glam::Vec2,
         }
 
-        let font_bg = self.manager.fetch_font(cmd.font).unwrap().bg;
-        let view = self.manager.fetch_font(cmd.font).unwrap().atlas_view;
-        let font = self.manager.fetch_font(cmd.font).unwrap().font;
-        let dim = self.manager.fetch_font(cmd.font).unwrap().dim;
+        let font_handle = self.manager.fetch_font(cmd.font).unwrap();
+        let font_bg = font_handle.bg;
+        let font = font_handle.font;
+        let dim = font_handle.dim;
         self.cmd
             .begin_drawing(&DrawBegin {
                 viewport: self.manager.canvas().viewport(),
@@ -137,18 +137,16 @@ impl Renderer2D {
             .unwrap();
 
         let mut xpos = cmd.position.x();
-        let mut ypos = cmd.position.y();
-        let mut xoff = vec2(0.0, 0.0);
-        let mut yoff = vec2(0.0, 0.0);
+        let ypos = cmd.position.y();
         for ch in cmd.text.chars() {
             unsafe {
                 if let Some(g) = (*font).glyphs.get(&ch) {
                     let mut vert_alloc = self.manager.allocator().bump().unwrap();
                     let mut index_alloc = self.manager.allocator().bump().unwrap();
                     let mut info = self.manager.allocator().bump().unwrap();
-                    let mut vertices = vert_alloc.slice::<TextVertex>().split_at_mut(4).0;
-                    let mut indices = index_alloc.slice::<u32>().split_at_mut(6).0;
-                    let mut color = info.slice::<glam::Vec4>();
+                    let vertices = vert_alloc.slice::<TextVertex>().split_at_mut(4).0;
+                    let indices = index_alloc.slice::<u32>().split_at_mut(6).0;
+                    let color = info.slice::<glam::Vec4>();
 
                     color[0] = vec4(1.0, 1.0, 1.0, 1.0);
 
@@ -188,13 +186,11 @@ impl Renderer2D {
 
                     indices.copy_from_slice(&[2, 1, 0, 0, 3, 2]);
                     xpos += g.advance;
-                    self.cmd.draw_indexed(&DrawIndexed {
-                        vertices: vert_alloc.handle(),
-                        indices: index_alloc.handle(),
+                    self.cmd.draw_dynamic_indexed(&DrawIndexedDynamic {
+                        vertices: vert_alloc,
+                        indices: index_alloc,
                         dynamic_buffers: [Some(info), None, None, None],
                         bind_groups: [Some(font_bg), None, None, None],
-                        vert_offset: vert_alloc.offset(),
-                        index_offset: index_alloc.offset(),
                         index_count: 6,
                         ..Default::default()
                     });
