@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::pipeline;
 use super::types::*;
 use crate::database::*;
@@ -74,12 +76,14 @@ impl ResourceManager {
             })
             .unwrap();
 
-        let allocator = ctx.make_dynamic_allocator(&DynamicAllocatorInfo {
-            debug_name: "renderer2d alloc",
-            usage: BufferUsage::ALL,
-            byte_size: 80000000,
-            num_allocations: 8080,
-        }).unwrap();
+        let allocator = ctx
+            .make_dynamic_allocator(&DynamicAllocatorInfo {
+                debug_name: "renderer2d alloc",
+                usage: BufferUsage::ALL,
+                byte_size: 80000000,
+                num_allocations: 8080,
+            })
+            .unwrap();
 
         let gfx = pipeline::make_graphics_pipeline(ctx, &canvas);
         let sampler = ctx
@@ -188,7 +192,6 @@ impl ResourceManager {
                     font: img,
                 })
                 .unwrap();
-
         }
     }
 
@@ -251,7 +254,95 @@ impl ResourceManager {
     }
 
     pub fn make_sprite_sheet(&mut self, info: &SpriteSheetInfo) -> Handle<SpriteSheet> {
-        todo!()
+        let mut hashed = HashMap::new();
+        {
+            let dim = self
+                .database
+                .fetch_sprite_sheet(info.db_key)
+                .unwrap()
+                .loaded
+                .as_ref()
+                .unwrap()
+                .size;
+
+            let sprites = &self.database.fetch_sprite_sheet(info.db_key).unwrap().cfg;
+            if let Some(spr) = sprites.sprites.as_ref() {
+                hashed = spr
+                    .into_iter()
+                    .map(|x| {
+                        (
+                            x.id,
+                            FRect2D {
+                                x: x.bounds.x as f32 / dim[0] as f32,
+                                y: x.bounds.y as f32 / dim[1] as f32,
+                                w: x.bounds.w as f32 / dim[0] as f32,
+                                h: x.bounds.h as f32 / dim[1] as f32,
+                            },
+                        )
+                    })
+                    .collect::<HashMap<u32, FRect2D>>();
+            }
+        }
+        assert!(!hashed.is_empty());
+
+        unsafe {
+            let img = self
+                .database
+                .fetch_sprite_sheet(info.db_key)
+                .unwrap()
+                .loaded
+                .as_ref()
+                .unwrap();
+
+            let spr = (*self.ctx)
+                .make_image(&ImageInfo {
+                    debug_name: info.name,
+                    dim: [img.size[0], img.size[1], 1],
+                    format: img.format,
+                    mip_levels: 1,
+                    initial_data: Some(&img.bytes),
+                })
+                .unwrap();
+
+            let spr_view = (*self.ctx)
+                .make_image_view(&ImageViewInfo {
+                    debug_name: info.name,
+                    img: spr,
+                    ..Default::default()
+                })
+                .unwrap();
+            
+                todo!("Please make the shaders for this");
+            return self
+                .sprite_sheets
+                .insert(SpriteSheet {
+                    dim: [img.size[0], img.size[1]],
+                    handle: spr,
+                    sprites: hashed,
+                    view: spr_view,
+                    bg: (*self.ctx)
+                        .make_bind_group(&BindGroupInfo {
+                            layout: self.gfx.bg_layout,
+                            bindings: &[
+                                BindingInfo {
+                                    resource: ShaderResource::Dynamic(&self.allocator),
+                                    binding: 0,
+                                },
+                                BindingInfo {
+                                    resource: ShaderResource::Dynamic(&self.allocator),
+                                    binding: 1,
+                                },
+                                BindingInfo {
+                                    resource: ShaderResource::SampledImage(spr_view, self.sampler),
+                                    binding: 2,
+                                },
+                            ],
+                            ..Default::default()
+                        })
+                        .unwrap(),
+                })
+                .unwrap();
+        }
     }
 
     pub fn release_sprite(&mut self, handle: Handle<Sprite>) {}

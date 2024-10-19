@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct SpriteJSONEntry {
@@ -13,9 +12,25 @@ pub struct SpriteJSON {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
+pub struct SpriteSheetJSONSprite {
+    pub name: String,
+    pub id: u32,
+    pub bounds: dashi::Rect2D,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct SpriteSheetJSONAutoGen {
+    pub name: String,
+    pub bounds: dashi::Rect2D,
+    pub stride: u32,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
 pub struct SpriteSheetJSONEntry {
     pub name: String,
     pub image_path: String,
+    pub sprites: Option<Vec<SpriteSheetJSONSprite>>,
+    pub auto_gen: Option<SpriteSheetJSONAutoGen>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -40,5 +55,5 @@ pub struct TTFJSON {
 pub struct DatabaseJSON {
     pub sprite_cfg: Option<String>,
     pub sprite_sheet_cfg: Option<String>,
-    pub ttf_cfg : Option<String>,
+    pub ttf_cfg: Option<String>,
 }

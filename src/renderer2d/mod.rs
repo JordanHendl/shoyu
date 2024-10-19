@@ -30,7 +30,7 @@ pub struct SpriteDrawCommand {
 
 pub struct SpriteSheetDrawCommand {
     pub sheet: Handle<SpriteSheet>,
-    pub sprite_bounds: Rect2D,
+    pub sprite_id: u32,
     pub position: glam::Vec2,
     pub rotation: f32,
     pub flip: bool,
@@ -41,6 +41,19 @@ pub struct TextDrawCommand<'a> {
     pub position: glam::Vec2,
     pub scale: f32,
     pub text: &'a str,
+    pub color: glam::Vec4,
+}
+
+impl<'a> Default for TextDrawCommand<'a> {
+    fn default() -> Self {
+        Self {
+            font: Default::default(),
+            position: Default::default(),
+            scale: Default::default(),
+            text: Default::default(),
+            color: vec4(1.0, 1.0, 1.0, 1.0),
+        }
+    }
 }
 impl Renderer2D {
     pub fn new(ctx: &mut Context, database: Database, canvas: Canvas) -> Self {
@@ -148,7 +161,7 @@ impl Renderer2D {
                     let indices = index_alloc.slice::<u32>().split_at_mut(6).0;
                     let color = info.slice::<glam::Vec4>();
 
-                    color[0] = vec4(1.0, 1.0, 1.0, 1.0);
+                    color[0] = cmd.color;
 
                     let scale = cmd.scale;
                     let gw = g.bounds.w as f32 / dim[0] as f32;

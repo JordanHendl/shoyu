@@ -79,6 +79,7 @@ fn main() {
             position: vec2(-0.5, 0.0),
             scale: 1.0,
             text: "The quick brown fox jumps over the lazy dog.",
+            ..Default::default()
         });
 
         renderer.draw_text(&TextDrawCommand {
@@ -86,6 +87,7 @@ fn main() {
             position: vec2(-0.5, 0.25),
             scale: 1.0,
             text: ":) uwu owo >3<",
+            color: vec4(1.0, 0.5, 0.5, 1.0),
         });
 
         renderer.finish_drawing();

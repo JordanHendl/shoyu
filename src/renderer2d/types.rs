@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::database::font::*;
 use dashi::utils::*;
 use dashi::*;
@@ -29,6 +31,7 @@ pub struct SpriteSheet {
     pub handle: Handle<Image>,
     pub view: Handle<ImageView>,
     pub bg: Handle<BindGroup>,
+    pub sprites: HashMap<u32, FRect2D>,
 }
 
 pub struct Font {
