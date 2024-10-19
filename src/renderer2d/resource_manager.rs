@@ -74,7 +74,12 @@ impl ResourceManager {
             })
             .unwrap();
 
-        let allocator = ctx.make_dynamic_allocator(&Default::default()).unwrap();
+        let allocator = ctx.make_dynamic_allocator(&DynamicAllocatorInfo {
+            debug_name: "renderer2d alloc",
+            usage: BufferUsage::ALL,
+            byte_size: 80000000,
+            num_allocations: 8080,
+        }).unwrap();
 
         let gfx = pipeline::make_graphics_pipeline(ctx, &canvas);
         let sampler = ctx

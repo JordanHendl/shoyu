@@ -24,18 +24,19 @@ impl TTFont {
         // Create a new bitmap (initialized to zero)
         let mut bitmap = vec![0u8; (width * height) as usize];
 
-        //        let mut file = File::open(file_path).unwrap();
-        //        let mut font_data = Vec::new();
-        //        file.read_to_end(&mut font_data).unwrap();
         let font_data = std::fs::read(file_path).unwrap();
-        let font = fontdue::Font::from_bytes(font_data, fontdue::FontSettings {
-            scale: 80.0,
-            ..Default::default()
-        }).unwrap();
+        let font = fontdue::Font::from_bytes(
+            font_data,
+            fontdue::FontSettings {
+                scale: 80.0,
+                ..Default::default()
+            },
+        )
+        .unwrap();
 
         // Coordinates to keep track of where to draw the next glyph
         let mut cursor_x: u32 = 0;
-        let mut cursor_y: u32 = 0;
+        let mut cursor_y: u32 = font_size as u32;
         let mut line_height = 0;
         let mut glyph_map = HashMap::new();
         let mut max_height_in_line: f32 = 0.0; // Track the tallest glyph in the line
@@ -57,10 +58,10 @@ impl TTFont {
                     let px = i % metrics.width;
                     let py = i / metrics.width;
                     let x = (cursor_x as usize) + px;
-                    let y = (cursor_y as usize) + py;
+                    let y = (cursor_y  as i32) as usize + py;
+
                     bitmap[y * width as usize + x] = pixel;
                 }
-
 
                 // Store the glyph boundary
                 glyph_map.insert(
@@ -78,7 +79,8 @@ impl TTFont {
                     },
                 );
                 // Move the cursor forward by the advance width
-                cursor_x += metrics.advance_width as u32;
+                cursor_x += (metrics.advance_width + metrics.xmin as f32) as u32;
+
                 // If the cursor_x exceeds the bitmap width, move to the next line
                 if cursor_x >= width {
                     cursor_x = 0;

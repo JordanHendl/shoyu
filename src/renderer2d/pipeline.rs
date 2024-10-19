@@ -204,7 +204,7 @@ void main() {
 
     void main() { 
         out_color = texture(in_image, frag_coords); 
-        if(out_color.a < 0.1)
+        if(out_color.r < 0.1)
             discard;
         else 
             out_color = vec4(color.xyz, 1.0);

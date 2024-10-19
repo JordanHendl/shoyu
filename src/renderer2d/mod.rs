@@ -39,6 +39,7 @@ pub struct SpriteSheetDrawCommand {
 pub struct TextDrawCommand<'a> {
     pub font: Handle<Font>,
     pub position: glam::Vec2,
+    pub scale: f32,
     pub text: &'a str,
 }
 impl Renderer2D {
@@ -151,16 +152,20 @@ impl Renderer2D {
 
                     color[0] = vec4(1.0, 1.0, 1.0, 1.0);
 
-                    let x0 = xpos - g.bearing_x;
-                    let y0 = xpos - g.bearing_y;
-                    let x1 = x0 + (g.bounds.w as f32 / dim[0] as f32);
-                    let y1 = y0 + (g.bounds.h as f32 / dim[1] as f32);
+                    let scale = cmd.scale;
+                    let gw = g.bounds.w as f32 / dim[0] as f32;
+                    let gh = g.bounds.h as f32 / dim[1] as f32;
+
+                    let x0 = scale * (xpos);
+                    let y0 = scale * (ypos - gh - g.bearing_y);
+                    let x1 = scale * ((xpos) + (g.bounds.w as f32 / dim[0] as f32));
+                    let y1 = scale * ((ypos - gh - g.bearing_y) + gh);
 
                     let tex_x0 = (g.bounds.x as f32 / dim[0] as f32) as f32;
                     let tex_y0 = (g.bounds.y as f32 / dim[1] as f32) as f32;
 
-                    let tex_x1 = tex_x0 + (g.bounds.w as f32 / dim[0] as f32);
-                    let tex_y1 = tex_y0 + (g.bounds.h as f32 / dim[1] as f32);
+                    let tex_x1 = tex_x0 + gw;
+                    let tex_y1 = tex_y0 + gh;
 
                     vertices.copy_from_slice(&[
                         TextVertex {
@@ -181,7 +186,7 @@ impl Renderer2D {
                         },
                     ]);
 
-                    indices.copy_from_slice(&[0, 1, 2, 2, 3, 0]);
+                    indices.copy_from_slice(&[2, 1, 0, 0, 3, 2]);
                     xpos += g.advance;
                     self.cmd.draw_indexed(&DrawIndexed {
                         vertices: vert_alloc.handle(),

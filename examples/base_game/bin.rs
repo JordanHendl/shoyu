@@ -76,8 +76,16 @@ fn main() {
         
         renderer.draw_text(&TextDrawCommand {
             font,
-            position: vec2(0.0, 0.0),
-            text: "lmao!!!",
+            position: vec2(-0.5, 0.0),
+            scale: 2.0,
+            text: "The quick brown fox jumps over the lazy dog.",
+        });
+
+        renderer.draw_text(&TextDrawCommand {
+            font,
+            position: vec2(-0.5, 0.5),
+            scale: 2.0,
+            text: ":) uwu owo >3<",
         });
 
         renderer.finish_drawing();
