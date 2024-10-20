@@ -25,15 +25,14 @@ pub struct SpriteDrawCommand {
     pub position: glam::Vec2,
     pub size: glam::Vec2,
     pub rotation: f32,
-    pub flip: bool,
 }
 
 pub struct SpriteSheetDrawCommand {
     pub sheet: Handle<SpriteSheet>,
     pub sprite_id: u32,
     pub position: glam::Vec2,
+    pub size: glam::Vec2,
     pub rotation: f32,
-    pub flip: bool,
 }
 
 pub struct TextDrawCommand<'a> {
@@ -155,10 +154,8 @@ impl Renderer2D {
             unsafe {
                 if let Some(g) = (*font).glyphs.get(&ch) {
                     let mut vert_alloc = self.manager.allocator().bump().unwrap();
-                    let mut index_alloc = self.manager.allocator().bump().unwrap();
                     let mut info = self.manager.allocator().bump().unwrap();
                     let vertices = vert_alloc.slice::<TextVertex>().split_at_mut(4).0;
-                    let indices = index_alloc.slice::<u32>().split_at_mut(6).0;
                     let color = info.slice::<glam::Vec4>();
 
                     color[0] = cmd.color;
@@ -167,10 +164,10 @@ impl Renderer2D {
                     let gw = g.bounds.w as f32 / dim[0] as f32;
                     let gh = g.bounds.h as f32 / dim[1] as f32;
 
-                    let x0 = scale * (xpos);
-                    let y0 = scale * (ypos - gh - g.bearing_y);
-                    let x1 = scale * ((xpos) + (g.bounds.w as f32 / dim[0] as f32));
-                    let y1 = scale * ((ypos - gh - g.bearing_y) + gh);
+                    let x0 = (scale * (xpos)) - 1.0;
+                    let y0 = (scale * (ypos - gh - g.bearing_y)) - 1.0;
+                    let x1 = (scale * ((xpos) + (g.bounds.w as f32 / dim[0] as f32))) - 1.0;
+                    let y1 = (scale * ((ypos - gh - g.bearing_y) + gh)) - 1.0;
 
                     let tex_x0 = (g.bounds.x as f32 / dim[0] as f32) as f32;
                     let tex_y0 = (g.bounds.y as f32 / dim[1] as f32) as f32;
@@ -180,16 +177,16 @@ impl Renderer2D {
 
                     vertices.copy_from_slice(&[
                         TextVertex {
-                            pos: vec2(x0, y0),
-                            tex: vec2(tex_x0, tex_y0),
+                            pos: vec2(x1, y1),
+                            tex: vec2(tex_x1, tex_y1),
                         },
                         TextVertex {
                             pos: vec2(x0, y1),
                             tex: vec2(tex_x0, tex_y1),
                         },
                         TextVertex {
-                            pos: vec2(x1, y1),
-                            tex: vec2(tex_x1, tex_y1),
+                            pos: vec2(x0, y0),
+                            tex: vec2(tex_x0, tex_y0),
                         },
                         TextVertex {
                             pos: vec2(x1, y0),
@@ -197,11 +194,10 @@ impl Renderer2D {
                         },
                     ]);
 
-                    indices.copy_from_slice(&[2, 1, 0, 0, 3, 2]);
                     xpos += g.advance;
                     self.cmd.draw_dynamic_indexed(&DrawIndexedDynamic {
                         vertices: vert_alloc,
-                        indices: index_alloc,
+                        indices: self.manager.indices().to_unmapped_dynamic(0),
                         dynamic_buffers: [Some(info), None, None, None],
                         bind_groups: [Some(font_bg), None, None, None],
                         index_count: 6,
@@ -238,5 +234,70 @@ impl Renderer2D {
         });
     }
 
-    pub fn draw_spritesheet(&mut self, cmd: &SpriteSheetDrawCommand) {}
+    pub fn draw_spritesheet(&mut self, cmd: &SpriteSheetDrawCommand) {
+        let mut vert_alloc = self.manager.allocator().bump().unwrap();
+        let mut b1 = self.manager.allocator().bump().unwrap();
+        let mut b2 = self.manager.allocator().bump().unwrap();
+        if let Some(sheet) = self.manager.fetch_sprite_sheet(cmd.sheet) {
+            if let Some(bounds) = sheet.sprites.get(&cmd.sprite_id) {
+                let transform = &mut b1.slice::<glam::Mat4>()[0];
+                let camera = &mut b2.slice::<glam::Vec2>()[0];
+                let vertices = vert_alloc.slice::<Vertex>().split_at_mut(4).0;
+
+                vertices.copy_from_slice(&[
+                    // Top-left corner of the screen
+                    Vertex {
+                        position: [-1.0, 1.0],
+                        tex_coords: [bounds.x, bounds.h],
+                    },
+                    // Bottom-left corner of the screen
+                    Vertex {
+                        position: [-1.0, -1.0],
+                        tex_coords: [bounds.x, bounds.y],
+                    },
+                    // Bottom-right corner of the screen
+                    Vertex {
+                        position: [1.0, -1.0],
+                        tex_coords: [bounds.w, bounds.y],
+                    },
+                    // Top-right corner of the screen
+                    Vertex {
+                        position: [1.0, 1.0],
+                        tex_coords: [bounds.w, bounds.h],
+                    },
+                ]);
+
+                let angle_radian = cmd.rotation.to_radians();
+                let half_size = glam::Vec3::new(cmd.size.x() / 2.0, cmd.size.y() / 2.0, 0.0);
+
+                // Step 1: Translate to move the quad's center to the origin
+                let translate_to_origin = glam::Mat4::from_translation(-half_size);
+
+                // Step 2: Apply rotation around the origin
+                let rotate = glam::Mat4::from_rotation_z(angle_radian);
+
+                // Step 3: Translate the quad back to its original position
+                let translate_back = glam::Mat4::from_translation(
+                    glam::Vec3::new(cmd.position.x(), cmd.position.y(), 0.0) + half_size,
+                );
+                let scale =
+                    glam::Mat4::from_scale(glam::Vec3::new(cmd.size.x(), cmd.size.y(), 1.0));
+
+                let t = translate_back * rotate * translate_to_origin * scale;
+
+                *transform = t;
+                *camera = glam::Vec2::new(0.0, 0.0);
+                let sprite_bg = self.manager.fetch_sprite_sheet(cmd.sheet).unwrap().bg;
+
+                self.cmd.draw_dynamic_indexed(&DrawIndexedDynamic {
+                    vertices: vert_alloc,
+                    indices: self.manager.indices().to_unmapped_dynamic(0),
+                    dynamic_buffers: [Some(b1), Some(b2), None, None],
+                    bind_groups: [Some(sprite_bg), None, None, None],
+                    index_count: 6,
+                    ..Default::default()
+                });
+            }
+        }
+    }
 }

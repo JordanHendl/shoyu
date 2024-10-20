@@ -21,9 +21,10 @@ pub struct ResourceManager {
 }
 
 #[repr(C)]
-struct Vertex {
-    position: [f32; 2],
-    tex_coords: [f32; 2],
+#[derive(Clone, Copy)]
+pub struct Vertex {
+    pub position: [f32; 2],
+    pub tex_coords: [f32; 2],
 }
 
 impl ResourceManager {
@@ -32,22 +33,22 @@ impl ResourceManager {
             // Top-left corner of the screen
             Vertex {
                 position: [-1.0, 1.0],
-                tex_coords: [0.0, 0.0],
+                tex_coords: [0.0, 1.0],
             },
             // Bottom-left corner of the screen
             Vertex {
                 position: [-1.0, -1.0],
-                tex_coords: [0.0, 1.0],
+                tex_coords: [0.0, 0.0],
             },
             // Bottom-right corner of the screen
             Vertex {
                 position: [1.0, -1.0],
-                tex_coords: [1.0, 1.0],
+                tex_coords: [1.0, 0.0],
             },
             // Top-right corner of the screen
             Vertex {
                 position: [1.0, 1.0],
-                tex_coords: [1.0, 0.0],
+                tex_coords: [1.0, 1.0],
             },
         ];
 
@@ -87,7 +88,10 @@ impl ResourceManager {
 
         let gfx = pipeline::make_graphics_pipeline(ctx, &canvas);
         let sampler = ctx
-            .make_sampler(&Default::default())
+            .make_sampler(&SamplerInfo {
+                border_color: BorderColor::TransparentBlack,
+                ..Default::default()
+            })
             .expect("Unable to make sampler!");
 
         Self {
@@ -275,8 +279,8 @@ impl ResourceManager {
                             FRect2D {
                                 x: x.bounds.x as f32 / dim[0] as f32,
                                 y: x.bounds.y as f32 / dim[1] as f32,
-                                w: x.bounds.w as f32 / dim[0] as f32,
-                                h: x.bounds.h as f32 / dim[1] as f32,
+                                w: x.bounds.x as f32 / dim[0] as f32 + x.bounds.w as f32 / dim[0] as f32,
+                                h: x.bounds.y as f32 / dim[0] as f32 + x.bounds.h as f32 / dim[1] as f32,
                             },
                         )
                     })
@@ -311,8 +315,7 @@ impl ResourceManager {
                     ..Default::default()
                 })
                 .unwrap();
-            
-                todo!("Please make the shaders for this");
+
             return self
                 .sprite_sheets
                 .insert(SpriteSheet {

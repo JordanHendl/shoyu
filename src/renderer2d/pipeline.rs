@@ -102,6 +102,8 @@ void main() {
 
     void main() { 
         out_color = texture(in_image, frag_coords); 
+//        if(out_color.a < 0.9) 
+//            discard;
     }
 "#,
                         frag
@@ -109,7 +111,12 @@ void main() {
                     specialization: &[],
                 },
             ],
-            details: Default::default(),
+            details: GraphicsPipelineDetails {
+                topology: Topology::TriangleList,
+                culling: CullMode::None,
+                front_face: VertexOrdering::CounterClockwise,
+                depth_test: false,
+            },
         })
         .expect("Unable to create GFX Pipeline Layout!");
 
