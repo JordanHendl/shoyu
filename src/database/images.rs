@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 pub struct SpriteEntry {
     pub cfg: SpriteJSONEntry,
-    pub loaded: Option<ImageInfo<u8>>,
+    pub loaded: Option<ImageLoadInfo<u8>>,
 }
 
 impl SpriteEntry {
@@ -22,7 +22,7 @@ impl SpriteEntry {
 
 pub struct SpriteSheetEntry {
     pub cfg: SpriteSheetJSONEntry,
-    pub loaded: Option<ImageInfo<u8>>,
+    pub loaded: Option<ImageLoadInfo<u8>>,
 }
 
 impl SpriteSheetEntry {

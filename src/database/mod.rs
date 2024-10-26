@@ -5,8 +5,8 @@ pub mod json;
 pub use json::*;
 use std::collections::HashMap;
 use std::fs;
-mod load_funcs;
-use load_funcs::*;
+pub mod load_funcs;
+pub use load_funcs::*;
 mod images;
 use images::*;
 pub mod font;
@@ -17,6 +17,7 @@ pub struct Database {
     sprites: HashMap<String, SpriteEntry>,
     sprite_sheets: HashMap<String, SpriteSheetEntry>,
     ttfs: HashMap<String, TTFEntry>,
+    particle_cfg: String,
 }
 
 impl Database {
@@ -31,12 +32,17 @@ impl Database {
         let info: SpriteSheetJSON = serde_json::from_str(&json_data)?;
         Ok(info)
     }
-
+    
     fn get_ttf_json(path: &str) -> Result<TTFJSON, Error> {
         let json_data = fs::read_to_string(path)?;
         let info: TTFJSON = serde_json::from_str(&json_data)?;
         Ok(info)
     }
+    
+    pub fn base_path(&self) -> &str {
+        &self.base_path
+    }
+
     pub fn new(base_path: &str) -> Result<Self, Error> {
         let json_data = fs::read_to_string(format!("{}/shoyu.json", base_path))?;
 
@@ -77,7 +83,16 @@ impl Database {
             sprites,
             sprite_sheets,
             ttfs,
+            particle_cfg: if info.particle_cfg.is_some() {
+                info.particle_cfg.unwrap().clone()
+            } else {
+                "".to_string()
+            },
         })
+    }
+
+    pub fn particle_system_cfg_path(&self) -> Result<String, Error> {
+        return Ok(self.particle_cfg.clone());
     }
 
     pub fn fetch_sprite(&mut self, name: &str) -> Result<&SpriteEntry, Error> {
@@ -96,7 +111,7 @@ impl Database {
     }
 
     pub fn fetch_ttf(&mut self, name: &str) -> Result<&TTFEntry, Error> {
-        let default_typeset:  Vec<char> = (0 as u8 as char..127 as u8 as char).collect();
+        let default_typeset: Vec<char> = (0 as u8 as char..127 as u8 as char).collect();
         // TODO probably async this.
         if let Some(entry) = self.ttfs.get_mut(name) {
             if entry.loaded.is_none() {
@@ -105,10 +120,8 @@ impl Database {
                     Some(g) => {
                         str = g.chars().collect();
                         &str
-                    },
-                    None => {
-                        &default_typeset    
                     }
+                    None => &default_typeset,
                 };
                 entry.load(&self.base_path, glyphs);
             }

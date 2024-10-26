@@ -56,4 +56,5 @@ pub struct DatabaseJSON {
     pub sprite_cfg: Option<String>,
     pub sprite_sheet_cfg: Option<String>,
     pub ttf_cfg: Option<String>,
+    pub particle_cfg: Option<String>,
 }

@@ -7,6 +7,9 @@ pub use resource_manager::*;
 pub use dashi::utils::*;
 pub use dashi::*;
 
+mod particle;
+use particle::*;
+
 use crate::database::Database;
 use crate::utils::Canvas;
 mod pipeline;
@@ -14,6 +17,7 @@ mod pipeline;
 pub struct Renderer2D {
     display: Display,
     manager: ResourceManager,
+    particle_system: ParticleSystem,
     cmd: CommandList,
     ctx: *mut Context,
     display_img: Handle<ImageView>,
@@ -71,17 +75,29 @@ impl Renderer2D {
             })
             .unwrap();
 
+        let particle_path = database.particle_system_cfg_path().unwrap();
+        let base_path = database.base_path().to_string();
         let manager = ResourceManager::new(ctx, canvas, database);
-
         Self {
             cmd: Default::default(),
             display,
-            manager,
             ctx,
             display_img: Default::default(),
             display_sem: Default::default(),
+            particle_system: ParticleSystem::new(
+                ctx,
+                manager.canvas(),
+                &base_path,
+                &particle_path,
+            ),
+            manager,
         }
     }
+
+    pub fn particle_system(&mut self) -> &mut ParticleSystem {
+        &mut self.particle_system
+    }
+
     pub fn begin_drawing(&mut self) {
         self.manager.allocator().reset();
         let (img, sem, _idx, _good) =
@@ -91,6 +107,7 @@ impl Renderer2D {
         self.display_sem = sem;
 
         self.cmd = unsafe { (*self.ctx).begin_command_list(&Default::default()).unwrap() };
+        self.particle_system.update(&mut self.cmd);
         self.cmd
             .begin_drawing(&DrawBegin {
                 viewport: self.manager.canvas().viewport(),
@@ -101,6 +118,8 @@ impl Renderer2D {
 
     pub fn finish_drawing(&mut self) {
         unsafe {
+            self.particle_system.draw(&mut self.cmd);
+
             self.cmd.end_drawing().expect("Error ending drawing!");
 
             // Blit the framebuffer to the display's image
