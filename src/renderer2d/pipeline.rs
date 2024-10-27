@@ -17,6 +17,7 @@ pub fn make_graphics_pipeline(ctx: &mut Context, canvas: &Canvas) -> GraphicsPip
     // Make the bind group layout. This describes the bindings into a shader.
     let bg_layout = ctx
         .make_bind_group_layout(&BindGroupLayoutInfo {
+            debug_name: "Sprite BG Layout",
             shaders: &[
                 ShaderInfo {
                     shader_type: ShaderType::Vertex,
@@ -45,6 +46,7 @@ pub fn make_graphics_pipeline(ctx: &mut Context, canvas: &Canvas) -> GraphicsPip
     // Make a pipeline layout. This describes a graphics pipeline's state.
     let pipeline_layout = ctx
         .make_graphics_pipeline_layout(&GraphicsPipelineLayoutInfo {
+            debug_name: "Sprite GFX Layout",
             vertex_info: VertexDescriptionInfo {
                 entries: &[
                     VertexEntryInfo {
@@ -123,6 +125,7 @@ void main() {
     // Make a graphics pipeline. This matches a pipeline layout to a render pass.
     let pipeline = ctx
         .make_graphics_pipeline(&dashi::GraphicsPipelineInfo {
+            debug_name: "Sprite GFX Pipeline",
             layout: pipeline_layout,
             render_pass: canvas.render_pass(),
         })
@@ -135,6 +138,7 @@ void main() {
     // Make the bind group layout. This describes the bindings into a shader.
     let text_bg_layout = ctx
         .make_bind_group_layout(&BindGroupLayoutInfo {
+            debug_name: "Text BG Layout",
             shaders: &[
                 ShaderInfo {
                     shader_type: ShaderType::Vertex,
@@ -160,6 +164,7 @@ void main() {
     // Make a pipeline layout. This describes a graphics pipeline's state.
     let text_layout = ctx
         .make_graphics_pipeline_layout(&GraphicsPipelineLayoutInfo {
+            debug_name: "Text GFX Pipeline Layout",
             vertex_info: VertexDescriptionInfo {
                 entries: &[
                     VertexEntryInfo {
@@ -204,7 +209,7 @@ void main() {
     #version 450 core
     layout(location = 0) in vec2 frag_coords;
     layout(location = 0) out vec4 out_color;
-    layout(binding = 2) uniform isampler2D in_image;
+    layout(binding = 2) uniform usampler2D in_image;
     layout(binding = 1) uniform camera_offset {
         vec4 color;
     };
@@ -230,6 +235,7 @@ void main() {
     // Make a graphics pipeline. This matches a pipeline layout to a render pass.
     let text_pipeline = ctx
         .make_graphics_pipeline(&dashi::GraphicsPipelineInfo {
+            debug_name: "Text GFX Pipeline",
             layout: text_layout,
             render_pass: canvas.render_pass(),
         })

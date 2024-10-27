@@ -90,6 +90,9 @@ impl ResourceManager {
         let sampler = ctx
             .make_sampler(&SamplerInfo {
                 border_color: BorderColor::TransparentBlack,
+                min_filter: Filter::Nearest,
+                mag_filter: Filter::Nearest,
+                mipmap_mode: SamplerMipmapMode::Nearest,
                 ..Default::default()
             })
             .expect("Unable to make sampler!");
@@ -157,7 +160,7 @@ impl ResourceManager {
                 .make_image(&ImageInfo {
                     debug_name: info.name,
                     dim: [size.0, size.1, 1],
-                    format: Format::R8,
+                    format: Format::R8_UINT,
                     mip_levels: 1,
                     initial_data: Some(initial_data),
                 })
@@ -179,6 +182,7 @@ impl ResourceManager {
                     atlas_view: spr_view,
                     bg: (*self.ctx)
                         .make_bind_group(&BindGroupInfo {
+                            debug_name: info.name,
                             layout: self.gfx.text_bg_layout,
                             bindings: &[
                                 BindingInfo {
@@ -234,6 +238,7 @@ impl ResourceManager {
                     view: spr_view,
                     bg: (*self.ctx)
                         .make_bind_group(&BindGroupInfo {
+                            debug_name: info.name,
                             layout: self.gfx.bg_layout,
                             bindings: &[
                                 BindingInfo {
@@ -325,6 +330,7 @@ impl ResourceManager {
                     view: spr_view,
                     bg: (*self.ctx)
                         .make_bind_group(&BindGroupInfo {
+                            debug_name: info.name,
                             layout: self.gfx.bg_layout,
                             bindings: &[
                                 BindingInfo {

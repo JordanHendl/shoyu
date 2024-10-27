@@ -10,16 +10,42 @@ layout(local_size_x = BLOCK_SIZE_X, local_size_y = BLOCK_SIZE_Y, local_size_z = 
 
 #include <particle.glsl>
 
-layout(binding = 0) buffer ParticleSystem {
-  Particle particles[];
+layout(binding = 0) buffer particle_animation {
+    ParticleAnimation animations[];
 };
 
-layout(binding = 1) uniform ParticleSystemConfig {
-  vec2 camera;
-  float dt;
+layout(binding = 1) coherent buffer particle_buffer {
+    Particle particles[];
 };
+
+layout(binding = 2) uniform position_offset {
+    mat4 transform;
+};
+
+layout(binding = 3) uniform camera_offset {
+    vec2 camera;
+    float delta_time;
+};
+
+// Function to update particle based on behaviour
+void update_particle(inout Particle particle) {
+    particle.curr_lifetime = particle.curr_lifetime + (delta_time);
+    if(!particle.is_active) return;
+
+    if (particle.behaviour == LINEAR) {
+    } else if (particle.behaviour == GRAVITY) {
+        particle.velocity.y = -0.1; // Apply gravity
+    }
+    
+    particle.position += particle.velocity * delta_time;
+    if (particle.curr_lifetime > particle.max_lifetime) {
+        particle.is_active = false; // Deactivate particle if its lifetime is over
+    }
+}
 
 void main() {
-
+  Particle p = particles[gl_GlobalInvocationID.x];
+  update_particle(p);
+  particles[gl_GlobalInvocationID.x] = p;
 }
 

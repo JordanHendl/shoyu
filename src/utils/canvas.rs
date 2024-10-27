@@ -111,6 +111,7 @@ impl Canvas {
 
         let render_pass = ctx
             .make_render_pass(&RenderPassInfo {
+                debug_name: "Shoyu Canvas Render Pass",
                 viewport: info.viewport,
                 color_attachments: &attachs,
                 depth_stencil_attachment: depth_attach.as_ref(),
@@ -191,6 +192,7 @@ impl Canvas {
                     depth: Some(depth),
                     render_pass: ctx
                         .make_render_pass(&RenderPassInfo {
+                            debug_name: "Shoyu Canvas Render Pass",
                             viewport: Viewport {
                                 area: FRect2D {
                                     w: width as f32,

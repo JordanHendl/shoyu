@@ -8,6 +8,8 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use shoyu::database::*;
 use shoyu::renderer2d::FontInfo;
+use shoyu::renderer2d::ParticleBehaviour;
+use shoyu::renderer2d::ParticleEmitInfo;
 use shoyu::renderer2d::TextDrawCommand;
 use shoyu::utils::*;
 use shoyu::*;
@@ -49,6 +51,7 @@ fn main() {
     io_controller.map_action("rotate", vec![Keycode::Q]);
     io_controller.map_action("increment_sprite", vec![Keycode::UP]);
     io_controller.map_action("decrement_sprite", vec![Keycode::DOWN]);
+    io_controller.map_action("emit_particles", vec![Keycode::P]);
 
     'running: loop {
         io_controller.update();
@@ -70,7 +73,19 @@ fn main() {
                 sprite_id -= 1;
             }
         }
-
+        if io_controller
+            .event_cache()
+            .is_key_changed_to_pressed(Keycode::P)
+        {
+            renderer.particle_system().emit(&ParticleEmitInfo {
+                particle_id: 0,
+                lifetime_ms: 2000.0,
+                amount: 20,
+                position: vec2(0.0, 0.0),
+                initial_velocity: vec2(0.0, 0.0),
+                behaviour: ParticleBehaviour::GRAVITY,
+            });
+        }
         if io_controller.is_action_active("left") {
             pos = vec2(pos.x() - 0.01, pos.y());
         }

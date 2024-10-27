@@ -7,8 +7,8 @@ pub use resource_manager::*;
 pub use dashi::utils::*;
 pub use dashi::*;
 
-mod particle;
-use particle::*;
+pub mod particle;
+pub use particle::*;
 
 use crate::database::Database;
 use crate::utils::Canvas;

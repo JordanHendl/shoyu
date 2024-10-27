@@ -13,6 +13,9 @@ impl HotBuffer {
         let mut cln = info.clone();
         let front = ctx.make_buffer(&cln).unwrap();
         cln.visibility = MemoryVisibility::CpuAndGpu;
+
+        let name = format!("HOTBUFFER: {} Staging", cln.debug_name);
+        cln.debug_name = name.as_str();
         let staging = ctx.make_buffer(&cln).unwrap();
 
         let mapped = ctx.map_buffer_mut::<u8>(staging).unwrap();
@@ -28,8 +31,17 @@ impl HotBuffer {
     pub fn raw(&self) -> Handle<Buffer> {
         self.front
     }
+    pub fn sync_down(&mut self, list: &mut CommandList) {
+        list.copy_buffers(&BufferCopy {
+            src: self.front,
+            dst: self.staging,
+            src_offset: 0,
+            dst_offset: 0,
+            size: self.size,
+        });
+    }
 
-    pub fn sync(&mut self, list: &mut CommandList) {
+    pub fn sync_up(&mut self, list: &mut CommandList) {
         list.copy_buffers(&BufferCopy {
             src: self.staging,
             dst: self.front,
