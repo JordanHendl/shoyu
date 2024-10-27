@@ -1,7 +1,5 @@
 use dashi::Rect2D;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::Read;
 
 #[derive(Debug)]
 pub struct Glyph {

@@ -100,11 +100,13 @@ mod tests {
     use sdl2::keyboard::Keycode;
     use std::collections::VecDeque;
 
+    #[allow(dead_code)]
     struct MockEventPump {
         events: VecDeque<Event>,
     }
 
     impl MockEventPump {
+        #[allow(dead_code)]
         fn new(events: Vec<Event>) -> Self {
             MockEventPump {
                 events: events.into_iter().collect(),
@@ -120,7 +122,7 @@ mod tests {
         }
     }
 
-    fn mock_event_pump(events: Vec<Event>) -> EventPump {
+    fn mock_event_pump(_events: Vec<Event>) -> EventPump {
         let sdl_context = sdl2::init().unwrap();
         let event_pump = sdl_context.event_pump().unwrap();
         event_pump

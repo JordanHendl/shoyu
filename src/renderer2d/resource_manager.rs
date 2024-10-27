@@ -160,7 +160,7 @@ impl ResourceManager {
                 .make_image(&ImageInfo {
                     debug_name: info.name,
                     dim: [size.0, size.1, 1],
-                    format: Format::R8_UINT,
+                    format: Format::R8Uint,
                     mip_levels: 1,
                     initial_data: Some(initial_data),
                 })
@@ -354,7 +354,7 @@ impl ResourceManager {
         }
     }
 
-    pub fn release_sprite(&mut self, handle: Handle<Sprite>) {}
+    pub fn release_sprite(&mut self, _handle: Handle<Sprite>) {}
 
-    pub fn release_sprite_sheet(&mut self, handle: Handle<SpriteSheet>) {}
+    pub fn release_sprite_sheet(&mut self, _handle: Handle<SpriteSheet>) {}
 }

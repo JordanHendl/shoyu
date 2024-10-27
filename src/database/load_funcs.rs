@@ -1,4 +1,3 @@
-use image::GenericImageView;
 use super::error::*;
 pub struct ImageLoadInfo<T> {
    pub size: [u32; 2],

@@ -1,7 +1,6 @@
 mod json;
 use glam::*;
 use json::*;
-use std::collections::HashMap;
 
 use dashi::utils::*;
 use dashi::*;
@@ -110,6 +109,7 @@ pub struct ParticleEmitInfo {
     pub behaviour: ParticleBehaviour,
 }
 
+#[allow(dead_code)]
 pub struct ParticleSystem {
     ctx: *mut Context,
     vertices: Handle<Buffer>,
@@ -128,12 +128,12 @@ pub struct ParticleSystem {
 
 impl ParticleSystem {
     pub fn new(ctx: &mut Context, canvas: &Canvas, base_path: &str, particle_cfg: &str) -> Self {
-        const TEST_CHECKER: [u8; 80] = [0; std::mem::size_of::<ShaderParticle>()];
+        const _TEST_CHECKER: [u8; 80] = [0; std::mem::size_of::<ShaderParticle>()];
 
         const MAX_PARTICLES: usize = 2048;
         let json_data = std::fs::read_to_string(format!("{}/{}", base_path, particle_cfg))
             .expect("Unable to load Particle System JSON!");
-        let mut info: ParticleSystemJSON =
+        let info: ParticleSystemJSON =
             serde_json::from_str(&json_data).expect("Unable to parse Particle System JSON!");
 
         // Parse particle info
@@ -304,23 +304,22 @@ impl ParticleSystem {
     }
 
     pub fn emit(&mut self, info: &ParticleEmitInfo) {
-
         println!("EMITTING AHH");
-//        for id in self.curr_particle..info.amount {
-//            self.particle_list[id as usize] = ShaderParticle {
-//                position: info.position,
-//                size: vec2(1.0, 1.0),
-//                rot: 0.0,
-//                velocity: vec2(0.0, 0.0),
-//                current_frame: 0,
-//                max_lifetime: info.lifetime_ms,
-//                curr_lifetime: 0.0,
-//                behaviour: info.behaviour.into(),
-//                active: 1,
-//                particle_type: info.particle_id as i32,
-//                padding: Default::default(),
-//            };
-//        }
+        //        for id in self.curr_particle..info.amount {
+        //            self.particle_list[id as usize] = ShaderParticle {
+        //                position: info.position,
+        //                size: vec2(1.0, 1.0),
+        //                rot: 0.0,
+        //                velocity: vec2(0.0, 0.0),
+        //                current_frame: 0,
+        //                max_lifetime: info.lifetime_ms,
+        //                curr_lifetime: 0.0,
+        //                behaviour: info.behaviour.into(),
+        //                active: 1,
+        //                particle_type: info.particle_id as i32,
+        //                padding: Default::default(),
+        //            };
+        //        }
 
         self.curr_particle += info.amount;
         if self.curr_particle > self.particle_list.len() as u32 {
@@ -330,7 +329,7 @@ impl ParticleSystem {
 
     // MUST NOT happen during an active render pass.
     // This is because this call performs compute dispatches.
-    pub fn update(&mut self, cmd: &mut CommandList) {
+    pub fn update(&mut self, cmd: &mut FramedCommandList) {
         self.alloc.reset();
         let mut buff = self.alloc.bump().unwrap();
         let cfg = &mut buff.slice::<ShaderConfig>()[0];
@@ -341,15 +340,17 @@ impl ParticleSystem {
         self.timer.stop();
         self.timer.start();
 
-        cmd.dispatch(&Dispatch {
-            compute: self.pipelines.compute_pipeline,
-            dynamic_buffers: [Some(buff), Some(buff), None, None],
-            bind_groups: [Some(self.draw_bg), None, None, None],
-            workgroup_size: [2048 / 32, 1, 1],
+        cmd.record(|cmd| {
+            cmd.dispatch(&Dispatch {
+                compute: self.pipelines.compute_pipeline,
+                dynamic_buffers: [Some(buff), Some(buff), None, None],
+                bind_groups: [Some(self.draw_bg), None, None, None],
+                workgroup_size: [2048 / 32, 1, 1],
+            });
         });
     }
 
-    pub fn draw(&mut self, cmd: &mut CommandList) {
+    pub fn draw(&mut self, cmd: &mut FramedCommandList) {
         let mut buff = self.alloc.bump().unwrap();
         let mut buff2 = self.alloc.bump().unwrap();
 
@@ -361,20 +362,22 @@ impl ParticleSystem {
             delta_time: self.timer.elapsed_ms() as f32 / 1000.0,
         };
 
-        cmd.begin_drawing(&DrawBegin {
-            viewport: Viewport::default(),
-            pipeline: self.pipelines.pipeline,
-        })
-        .unwrap();
+        cmd.append_record(|cmd| {
+            cmd.begin_drawing(&DrawBegin {
+                viewport: Viewport::default(),
+                pipeline: self.pipelines.pipeline,
+            })
+            .unwrap();
 
-        cmd.draw_indexed(&DrawIndexed {
-            vertices: self.vertices,
-            indices: self.indices,
-            dynamic_buffers: [Some(buff2), Some(buff), None, None],
-            bind_groups: [Some(self.draw_bg), None, None, None],
-            index_count: 6,
-            instance_count: 2048,
-            first_instance: 0,
+            cmd.draw_indexed(&DrawIndexed {
+                vertices: self.vertices,
+                indices: self.indices,
+                dynamic_buffers: [Some(buff2), Some(buff), None, None],
+                bind_groups: [Some(self.draw_bg), None, None, None],
+                index_count: 6,
+                instance_count: 2048,
+                first_instance: 0,
+            });
         });
     }
 }

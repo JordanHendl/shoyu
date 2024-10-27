@@ -1,13 +1,10 @@
 extern crate sdl2;
 
-use sdl2::keyboard::Keycode;
 use std::collections::HashMap;
-
-use crate::io::EventCache;
-
 use sdl2::controller::GameController;
 use sdl2::joystick::{HatState, Joystick};
 
+#[allow(dead_code)]
 pub struct JoystickController {
     joystick: Joystick,
     controller: Option<GameController>,

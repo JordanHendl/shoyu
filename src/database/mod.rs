@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 pub mod error;
 pub use error::*;
 pub mod json;
@@ -115,6 +114,7 @@ impl Database {
         // TODO probably async this.
         if let Some(entry) = self.ttfs.get_mut(name) {
             if entry.loaded.is_none() {
+                #[allow(unused_assignments)]
                 let mut str = Vec::new();
                 let glyphs: &[char] = match entry.cfg.glyphs.clone() {
                     Some(g) => {

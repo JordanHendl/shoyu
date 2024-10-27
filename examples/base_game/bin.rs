@@ -4,7 +4,6 @@ use renderer2d::SpriteDrawCommand;
 use renderer2d::SpriteInfo;
 use renderer2d::SpriteSheetDrawCommand;
 use renderer2d::SpriteSheetInfo;
-use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use shoyu::database::*;
 use shoyu::renderer2d::FontInfo;
@@ -22,8 +21,8 @@ fn main() {
     }
 
     let mut ctx = dashi::Context::new(&Default::default()).unwrap();
-    let mut database = Database::new(&args[1]).unwrap();
-    let mut canvas = Canvas::from_json(&mut ctx, &format!("{}/canvas.json", &args[1]));
+    let database = Database::new(&args[1]).unwrap();
+    let canvas = Canvas::from_json(&mut ctx, &format!("{}/canvas.json", &args[1]));
     let mut renderer = renderer2d::Renderer2D::new(&mut ctx, database, canvas);
 
     let sprite = renderer.resources().make_sprite(&SpriteInfo {

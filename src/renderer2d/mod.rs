@@ -18,10 +18,11 @@ pub struct Renderer2D {
     display: Display,
     manager: ResourceManager,
     particle_system: ParticleSystem,
-    cmd: CommandList,
+    cmd: FramedCommandList,
+    sems: Vec<Handle<Semaphore>>,
     ctx: *mut Context,
     display_img: Handle<ImageView>,
-    display_sem: Semaphore,
+    display_sem: Handle<Semaphore>,
 }
 
 pub struct SpriteDrawCommand {
@@ -79,17 +80,13 @@ impl Renderer2D {
         let base_path = database.base_path().to_string();
         let manager = ResourceManager::new(ctx, canvas, database);
         Self {
-            cmd: Default::default(),
+            cmd: FramedCommandList::new(ctx, "Renderer2D", 3),
             display,
+            sems: ctx.make_semaphores(1).unwrap(),
             ctx,
             display_img: Default::default(),
             display_sem: Default::default(),
-            particle_system: ParticleSystem::new(
-                ctx,
-                manager.canvas(),
-                &base_path,
-                &particle_path,
-            ),
+            particle_system: ParticleSystem::new(ctx, manager.canvas(), &base_path, &particle_path),
             manager,
         }
     }
@@ -106,42 +103,42 @@ impl Renderer2D {
         self.display_img = img;
         self.display_sem = sem;
 
-        self.cmd = unsafe { (*self.ctx).begin_command_list(&Default::default()).unwrap() };
+        //        self.cmd = unsafe { (*self.ctx).begin_command_list(&Default::default()).unwrap() };
         self.particle_system.update(&mut self.cmd);
-        self.cmd
-            .begin_drawing(&DrawBegin {
+
+        self.cmd.append_record(|cmd| {
+            cmd.begin_drawing(&DrawBegin {
                 viewport: self.manager.canvas().viewport(),
                 pipeline: self.manager.gfx().pipeline,
             })
             .unwrap();
+        });
     }
 
     pub fn finish_drawing(&mut self) {
         unsafe {
             self.particle_system.draw(&mut self.cmd);
 
-            self.cmd.end_drawing().expect("Error ending drawing!");
+            self.cmd.append_record(|cmd| {
+                cmd.end_drawing().expect("Error ending drawing!");
 
-            // Blit the framebuffer to the display's image
-            self.cmd.blit(ImageBlit {
-                src: self.manager.canvas().color_attachment(0),
-                dst: self.display_img,
-                filter: Filter::Nearest,
-                ..Default::default()
+                // Blit the framebuffer to the display's image
+                cmd.blit(ImageBlit {
+                    src: self.manager.canvas().color_attachment(0),
+                    dst: self.display_img,
+                    filter: Filter::Nearest,
+                    ..Default::default()
+                });
             });
 
-            // Submit our recorded commands
-            let (sem, fence) = (*self.ctx)
-                .submit(&mut self.cmd, Some(&[self.display_sem]))
-                .unwrap();
+            self.cmd.submit(&SubmitInfo {
+                wait_sems: &[self.display_sem],
+                signal_sems: &[self.sems[0]],
+            });
 
             // Present the display image, waiting on the semaphore that will signal when our
             // drawing/blitting is done.
-            (*self.ctx).present_display(&self.display, &[sem]).unwrap();
-
-            // Signal the context to free our command list on the next submit call. This is nice so
-            // that we don't have to manually manage it.
-            (*self.ctx).release_list_on_next_submit(fence, self.cmd.clone());
+            (*self.ctx).present_display(&self.display, &[self.sems[0]]).unwrap();
         }
     }
     pub fn resources(&mut self) -> &mut ResourceManager {
@@ -160,71 +157,73 @@ impl Renderer2D {
         let font_bg = font_handle.bg;
         let font = font_handle.font;
         let dim = font_handle.dim;
-        self.cmd
-            .begin_drawing(&DrawBegin {
+
+        self.cmd.append_record(|list| {
+            list.begin_drawing(&DrawBegin {
                 viewport: self.manager.canvas().viewport(),
                 pipeline: self.manager.gfx().text_pipeline,
             })
             .unwrap();
 
-        let mut xpos = cmd.position.x();
-        let ypos = cmd.position.y();
-        for ch in cmd.text.chars() {
-            unsafe {
-                if let Some(g) = (*font).glyphs.get(&ch) {
-                    let mut vert_alloc = self.manager.allocator().bump().unwrap();
-                    let mut info = self.manager.allocator().bump().unwrap();
-                    let vertices = vert_alloc.slice::<TextVertex>().split_at_mut(4).0;
-                    let color = info.slice::<glam::Vec4>();
+            let mut xpos = cmd.position.x();
+            let ypos = cmd.position.y();
+            for ch in cmd.text.chars() {
+                unsafe {
+                    if let Some(g) = (*font).glyphs.get(&ch) {
+                        let mut vert_alloc = self.manager.allocator().bump().unwrap();
+                        let mut info = self.manager.allocator().bump().unwrap();
+                        let vertices = vert_alloc.slice::<TextVertex>().split_at_mut(4).0;
+                        let color = info.slice::<glam::Vec4>();
 
-                    color[0] = cmd.color;
+                        color[0] = cmd.color;
 
-                    let scale = cmd.scale;
-                    let gw = g.bounds.w as f32 / dim[0] as f32;
-                    let gh = g.bounds.h as f32 / dim[1] as f32;
+                        let scale = cmd.scale;
+                        let gw = g.bounds.w as f32 / dim[0] as f32;
+                        let gh = g.bounds.h as f32 / dim[1] as f32;
 
-                    let x0 = (scale * (xpos)) - 1.0;
-                    let y0 = (scale * (ypos - gh - g.bearing_y)) - 1.0;
-                    let x1 = (scale * ((xpos) + (g.bounds.w as f32 / dim[0] as f32))) - 1.0;
-                    let y1 = (scale * ((ypos - gh - g.bearing_y) + gh)) - 1.0;
+                        let x0 = (scale * (xpos)) - 1.0;
+                        let y0 = (scale * (ypos - gh - g.bearing_y)) - 1.0;
+                        let x1 = (scale * ((xpos) + (g.bounds.w as f32 / dim[0] as f32))) - 1.0;
+                        let y1 = (scale * ((ypos - gh - g.bearing_y) + gh)) - 1.0;
 
-                    let tex_x0 = (g.bounds.x as f32 / dim[0] as f32) as f32;
-                    let tex_y0 = (g.bounds.y as f32 / dim[1] as f32) as f32;
+                        let tex_x0 = (g.bounds.x as f32 / dim[0] as f32) as f32;
+                        let tex_y0 = (g.bounds.y as f32 / dim[1] as f32) as f32;
 
-                    let tex_x1 = tex_x0 + gw;
-                    let tex_y1 = tex_y0 + gh;
+                        let tex_x1 = tex_x0 + gw;
+                        let tex_y1 = tex_y0 + gh;
 
-                    vertices.copy_from_slice(&[
-                        TextVertex {
-                            pos: vec2(x1, y1),
-                            tex: vec2(tex_x1, tex_y1),
-                        },
-                        TextVertex {
-                            pos: vec2(x0, y1),
-                            tex: vec2(tex_x0, tex_y1),
-                        },
-                        TextVertex {
-                            pos: vec2(x0, y0),
-                            tex: vec2(tex_x0, tex_y0),
-                        },
-                        TextVertex {
-                            pos: vec2(x1, y0),
-                            tex: vec2(tex_x1, tex_y0),
-                        },
-                    ]);
+                        vertices.copy_from_slice(&[
+                            TextVertex {
+                                pos: vec2(x1, y1),
+                                tex: vec2(tex_x1, tex_y1),
+                            },
+                            TextVertex {
+                                pos: vec2(x0, y1),
+                                tex: vec2(tex_x0, tex_y1),
+                            },
+                            TextVertex {
+                                pos: vec2(x0, y0),
+                                tex: vec2(tex_x0, tex_y0),
+                            },
+                            TextVertex {
+                                pos: vec2(x1, y0),
+                                tex: vec2(tex_x1, tex_y0),
+                            },
+                        ]);
 
-                    xpos += g.advance;
-                    self.cmd.draw_dynamic_indexed(&DrawIndexedDynamic {
-                        vertices: vert_alloc,
-                        indices: self.manager.indices().to_unmapped_dynamic(0),
-                        dynamic_buffers: [Some(info), None, None, None],
-                        bind_groups: [Some(font_bg), None, None, None],
-                        index_count: 6,
-                        ..Default::default()
-                    });
+                        xpos += g.advance;
+                        list.draw_dynamic_indexed(&DrawIndexedDynamic {
+                            vertices: vert_alloc,
+                            indices: self.manager.indices().to_unmapped_dynamic(0),
+                            dynamic_buffers: [Some(info), None, None, None],
+                            bind_groups: [Some(font_bg), None, None, None],
+                            index_count: 6,
+                            ..Default::default()
+                        });
+                    }
                 }
             }
-        }
+        });
     }
     pub fn draw_sprite(&mut self, cmd: &SpriteDrawCommand) {
         let mut b1 = self.manager.allocator().bump().unwrap();
@@ -243,13 +242,15 @@ impl Renderer2D {
         *camera = glam::Vec2::new(0.0, 0.0);
         let sprite_bg = self.manager.fetch_sprite(cmd.sprite).unwrap().bg;
 
-        self.cmd.draw_indexed(&DrawIndexed {
-            vertices: self.manager.vertices(),
-            indices: self.manager.indices(),
-            dynamic_buffers: [Some(b1), Some(b2), None, None],
-            bind_groups: [Some(sprite_bg), None, None, None],
-            index_count: 6,
-            ..Default::default()
+        self.cmd.append_record(|cmd| {
+            cmd.draw_indexed(&DrawIndexed {
+                vertices: self.manager.vertices(),
+                indices: self.manager.indices(),
+                dynamic_buffers: [Some(b1), Some(b2), None, None],
+                bind_groups: [Some(sprite_bg), None, None, None],
+                index_count: 6,
+                ..Default::default()
+            });
         });
     }
 
@@ -308,13 +309,15 @@ impl Renderer2D {
                 *camera = glam::Vec2::new(0.0, 0.0);
                 let sprite_bg = self.manager.fetch_sprite_sheet(cmd.sheet).unwrap().bg;
 
-                self.cmd.draw_dynamic_indexed(&DrawIndexedDynamic {
-                    vertices: vert_alloc,
-                    indices: self.manager.indices().to_unmapped_dynamic(0),
-                    dynamic_buffers: [Some(b1), Some(b2), None, None],
-                    bind_groups: [Some(sprite_bg), None, None, None],
-                    index_count: 6,
-                    ..Default::default()
+                self.cmd.append_record(|cmd| {
+                    cmd.draw_dynamic_indexed(&DrawIndexedDynamic {
+                        vertices: vert_alloc,
+                        indices: self.manager.indices().to_unmapped_dynamic(0),
+                        dynamic_buffers: [Some(b1), Some(b2), None, None],
+                        bind_groups: [Some(sprite_bg), None, None, None],
+                        index_count: 6,
+                        ..Default::default()
+                    });
                 });
             }
         }

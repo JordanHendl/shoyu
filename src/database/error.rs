@@ -1,6 +1,4 @@
 use std::fmt;
-use std::fs;
-use std::io;
 #[derive(Debug)]
 pub struct SlotError {}
 

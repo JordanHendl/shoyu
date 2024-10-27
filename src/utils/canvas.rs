@@ -29,6 +29,7 @@ pub enum StaticCanvasProfile {
     SIMPLE, // One color & depth attachment.
 }
 
+#[allow(dead_code)]
 pub struct Canvas {
     name: String,
     viewport: Viewport,
@@ -101,7 +102,7 @@ impl Canvas {
 
         let (imgs, views, attachs): (Vec<_>, Vec<_>, Vec<_>) = colors.iter().cloned().unzip3();
 
-        let (depth, view, depth_attach) = match info.depth_stencil {
+        let (depth, _view, depth_attach) = match info.depth_stencil {
             Some(a) => {
                 let (img, view, attachment) = attach_to_tuple(a);
                 (Some(img), Some(view), Some(attachment))

@@ -3,6 +3,7 @@ use dashi::*;
 
 use crate::utils::Canvas;
 
+#[allow(dead_code)]
 pub struct ParticlePipelineInfo {
     pub bg_layout: Handle<BindGroupLayout>,
     pub pipeline_layout: Handle<GraphicsPipelineLayout>,
