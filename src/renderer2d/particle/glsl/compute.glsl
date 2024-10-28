@@ -29,7 +29,6 @@ layout(binding = 3) uniform camera_offset {
 
 // Function to update particle based on behaviour
 void update_particle(inout Particle particle) {
-    particle.curr_lifetime = particle.curr_lifetime + (delta_time);
     if(!particle.is_active) return;
 
     if (particle.behaviour == LINEAR) {
@@ -38,6 +37,8 @@ void update_particle(inout Particle particle) {
     }
     
     particle.position += particle.velocity * delta_time;
+    particle.curr_lifetime = particle.curr_lifetime + (delta_time) * 1000.0;
+
     if (particle.curr_lifetime > particle.max_lifetime) {
         particle.is_active = false; // Deactivate particle if its lifetime is over
     }

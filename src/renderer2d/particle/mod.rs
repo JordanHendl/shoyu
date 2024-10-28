@@ -122,6 +122,7 @@ pub struct ParticleSystem {
     sampler: Handle<Sampler>,
     alloc: DynamicAllocator,
     draw_bg: Handle<BindGroup>,
+    compute_bg: Handle<BindGroup>,
     pipelines: ParticlePipelineInfo,
     timer: Timer,
 }
@@ -210,6 +211,39 @@ impl ParticleSystem {
             })
             .unwrap();
 
+        let compute_bg = ctx
+            .make_bind_group(&BindGroupInfo {
+                debug_name: "Particle System Compute BG",
+                layout: pipelines.compute_bg_layout,
+                bindings: &[
+                    BindingInfo {
+                        resource: ShaderResource::StorageBuffer(particle_anim_buffer),
+                        binding: 0,
+                    },
+                    BindingInfo {
+                        resource: ShaderResource::StorageBuffer(particle_buffer),
+                        binding: 1,
+                    },
+                    BindingInfo {
+                        resource: ShaderResource::Dynamic(&alloc),
+                        binding: 2,
+                    },
+                    BindingInfo {
+                        resource: ShaderResource::Dynamic(&alloc),
+                        binding: 3,
+                    },
+                    BindingInfo {
+                        resource: ShaderResource::SampledImage(
+                            image.as_ref().unwrap().view,
+                            sampler,
+                        ),
+                        binding: 4,
+                    },
+                ],
+                set: 0,
+            })
+            .unwrap();
+
         let draw_bg = ctx
             .make_bind_group(&BindGroupInfo {
                 debug_name: "Particle System Main Buffer",
@@ -256,7 +290,7 @@ impl ParticleSystem {
             // Top-left corner of the screen
             Vec2::new(-1.0, 1.0),
             // Bottom-left corner of the screen
-            -Vec2::new(1.0, -1.0),
+            Vec2::new(-1.0, -1.0),
             // Bottom-right corner of the screen
             Vec2::new(1.0, -1.0),
             // Top-right corner of the screen
@@ -300,26 +334,33 @@ impl ParticleSystem {
             vertices,
             indices,
             particle_animations: particle_anim_buffer,
+            compute_bg,
         }
     }
 
     pub fn emit(&mut self, info: &ParticleEmitInfo) {
-        println!("EMITTING AHH");
-        //        for id in self.curr_particle..info.amount {
-        //            self.particle_list[id as usize] = ShaderParticle {
-        //                position: info.position,
-        //                size: vec2(1.0, 1.0),
-        //                rot: 0.0,
-        //                velocity: vec2(0.0, 0.0),
-        //                current_frame: 0,
-        //                max_lifetime: info.lifetime_ms,
-        //                curr_lifetime: 0.0,
-        //                behaviour: info.behaviour.into(),
-        //                active: 1,
-        //                particle_type: info.particle_id as i32,
-        //                padding: Default::default(),
-        //            };
-        //        }
+        println!(
+            "EMITTING {} - {} AHH",
+            self.curr_particle,
+            self.curr_particle + info.amount
+        );
+        for id in self.curr_particle..self.curr_particle + info.amount {
+            if (id as usize) < self.particle_list.len() {
+                self.particle_list[id as usize] = ShaderParticle {
+                    position: info.position,
+                    size: vec2(1.0, 1.0),
+                    rot: 0.0,
+                    velocity: vec2(0.0, 0.0),
+                    current_frame: 0,
+                    max_lifetime: info.lifetime_ms,
+                    curr_lifetime: 0.0,
+                    behaviour: info.behaviour.into(),
+                    active: 1,
+                    particle_type: info.particle_id as i32,
+                    padding: Default::default(),
+                };
+            }
+        }
 
         self.curr_particle += info.amount;
         if self.curr_particle > self.particle_list.len() as u32 {
@@ -344,7 +385,7 @@ impl ParticleSystem {
             cmd.dispatch(&Dispatch {
                 compute: self.pipelines.compute_pipeline,
                 dynamic_buffers: [Some(buff), Some(buff), None, None],
-                bind_groups: [Some(self.draw_bg), None, None, None],
+                bind_groups: [Some(self.compute_bg), None, None, None],
                 workgroup_size: [2048 / 32, 1, 1],
             });
         });
@@ -362,7 +403,7 @@ impl ParticleSystem {
             delta_time: self.timer.elapsed_ms() as f32 / 1000.0,
         };
 
-        cmd.append_record(|cmd| {
+        cmd.append(|cmd| {
             cmd.begin_drawing(&DrawBegin {
                 viewport: Viewport::default(),
                 pipeline: self.pipelines.pipeline,

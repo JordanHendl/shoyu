@@ -106,7 +106,7 @@ impl Renderer2D {
         //        self.cmd = unsafe { (*self.ctx).begin_command_list(&Default::default()).unwrap() };
         self.particle_system.update(&mut self.cmd);
 
-        self.cmd.append_record(|cmd| {
+        self.cmd.append(|cmd| {
             cmd.begin_drawing(&DrawBegin {
                 viewport: self.manager.canvas().viewport(),
                 pipeline: self.manager.gfx().pipeline,
@@ -119,7 +119,7 @@ impl Renderer2D {
         unsafe {
             self.particle_system.draw(&mut self.cmd);
 
-            self.cmd.append_record(|cmd| {
+            self.cmd.append(|cmd| {
                 cmd.end_drawing().expect("Error ending drawing!");
 
                 // Blit the framebuffer to the display's image
@@ -158,7 +158,7 @@ impl Renderer2D {
         let font = font_handle.font;
         let dim = font_handle.dim;
 
-        self.cmd.append_record(|list| {
+        self.cmd.append(|list| {
             list.begin_drawing(&DrawBegin {
                 viewport: self.manager.canvas().viewport(),
                 pipeline: self.manager.gfx().text_pipeline,
@@ -242,7 +242,7 @@ impl Renderer2D {
         *camera = glam::Vec2::new(0.0, 0.0);
         let sprite_bg = self.manager.fetch_sprite(cmd.sprite).unwrap().bg;
 
-        self.cmd.append_record(|cmd| {
+        self.cmd.append(|cmd| {
             cmd.draw_indexed(&DrawIndexed {
                 vertices: self.manager.vertices(),
                 indices: self.manager.indices(),
@@ -309,7 +309,7 @@ impl Renderer2D {
                 *camera = glam::Vec2::new(0.0, 0.0);
                 let sprite_bg = self.manager.fetch_sprite_sheet(cmd.sheet).unwrap().bg;
 
-                self.cmd.append_record(|cmd| {
+                self.cmd.append(|cmd| {
                     cmd.draw_dynamic_indexed(&DrawIndexedDynamic {
                         vertices: vert_alloc,
                         indices: self.manager.indices().to_unmapped_dynamic(0),
