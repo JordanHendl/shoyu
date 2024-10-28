@@ -38,8 +38,19 @@ void update_particle(inout Particle particle) {
     
     particle.position += particle.velocity * delta_time;
     particle.curr_lifetime = particle.curr_lifetime + (delta_time) * 1000.0;
+    
+  
+    if(particle.curr_lifetime - particle.animation_timer > animations[particle.type].time_per_frame_ms) {
+      particle.animation_timer = particle.curr_lifetime;
+      particle.current_frame += 1;
+    }
+
+    if(particle.current_frame > animations[particle.type].animation_count) {
+      particle.current_frame = 0;
+    }
 
     if (particle.curr_lifetime > particle.max_lifetime) {
+        particle.animation_timer = 0.0;
         particle.is_active = false; // Deactivate particle if its lifetime is over
     }
 }

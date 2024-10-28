@@ -5,6 +5,7 @@ use renderer2d::SpriteInfo;
 use renderer2d::SpriteSheetDrawCommand;
 use renderer2d::SpriteSheetInfo;
 use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseButton;
 use shoyu::database::*;
 use shoyu::renderer2d::FontInfo;
 use shoyu::renderer2d::ParticleBehaviour;
@@ -43,15 +44,14 @@ fn main() {
     let mut rot = 0.0;
     let mut sprite_id = 0;
     let mut io_controller = IOController::new(ctx.get_sdl_ctx());
-    io_controller.map_action("up", vec![Keycode::W]);
-    io_controller.map_action("down", vec![Keycode::S]);
-    io_controller.map_action("left", vec![Keycode::A]);
-    io_controller.map_action("right", vec![Keycode::D]);
-    io_controller.map_action("rotate", vec![Keycode::Q]);
-    io_controller.map_action("increment_sprite", vec![Keycode::UP]);
-    io_controller.map_action("decrement_sprite", vec![Keycode::DOWN]);
-    io_controller.map_action("emit_particles", vec![Keycode::P]);
-
+    io_controller.map_action_keys("up", vec![Keycode::W]);
+    io_controller.map_action_keys("down", vec![Keycode::S]);
+    io_controller.map_action_keys("left", vec![Keycode::A]);
+    io_controller.map_action_keys("right", vec![Keycode::D]);
+    io_controller.map_action_keys("rotate", vec![Keycode::Q]);
+    io_controller.map_action_keys("increment_sprite", vec![Keycode::UP]);
+    io_controller.map_action_keys("decrement_sprite", vec![Keycode::DOWN]);
+    io_controller.map_action_buttons("emit_particles", vec![MouseButton::Left]);
     'running: loop {
         io_controller.update();
 
@@ -59,28 +59,27 @@ fn main() {
             break 'running;
         }
         if io_controller
-            .event_cache()
-            .is_key_changed_to_pressed(Keycode::UP)
+            .is_action_pressed("increment_sprite")
         {
             sprite_id += 1;
         }
         if io_controller
-            .event_cache()
-            .is_key_changed_to_pressed(Keycode::DOWN)
+            .is_action_pressed("decrement_sprite")
         {
             if sprite_id != 0 {
                 sprite_id -= 1;
             }
         }
         if io_controller
-            .event_cache()
-            .is_key_changed_to_pressed(Keycode::P)
+            .is_action_pressed("emit_particles")
         {
-            renderer.particle_system().emit(&ParticleEmitInfo {
+            let pos = io_controller.get_mouse_position_interp(1024.0, 1024.0);
+
+            renderer.particle_system().emit_random(&ParticleEmitInfo {
                 particle_id: 0,
                 lifetime_ms: 2000.0,
                 amount: 20,
-                position: vec2(0.0, 0.0),
+                position: vec2(pos.position.0 - 0.5, pos.position.1 - 0.5),
                 initial_velocity: vec2(0.0, 0.0),
                 behaviour: ParticleBehaviour::GRAVITY,
             });

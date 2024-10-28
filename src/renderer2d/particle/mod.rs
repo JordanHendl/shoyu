@@ -10,6 +10,7 @@ use pipelines::*;
 
 use crate::database::load_funcs;
 use crate::utils::{Canvas, SizedImage, Timer};
+use rand::prelude::*;
 #[repr(C)]
 #[derive(Default, Clone)]
 struct ShaderConfig {
@@ -85,7 +86,8 @@ struct ShaderParticle {
     curr_lifetime: f32,
     behaviour: u32,
     active: u32,
-    padding: Vec3,
+    anim_timer: f32,
+    padding: Vec2,
 }
 
 #[derive(Copy, Clone)]
@@ -129,7 +131,7 @@ pub struct ParticleSystem {
 
 impl ParticleSystem {
     pub fn new(ctx: &mut Context, canvas: &Canvas, base_path: &str, particle_cfg: &str) -> Self {
-        const _TEST_CHECKER: [u8; 80] = [0; std::mem::size_of::<ShaderParticle>()];
+        const _TEST_CHECKER: [u8; 64] = [0; std::mem::size_of::<ShaderParticle>()];
 
         const MAX_PARTICLES: usize = 2048;
         let json_data = std::fs::read_to_string(format!("{}/{}", base_path, particle_cfg))
@@ -338,17 +340,41 @@ impl ParticleSystem {
         }
     }
 
+    pub fn emit_random(&mut self, info: &ParticleEmitInfo) {
+        let mut rng = rand::thread_rng();
+
+        for id in self.curr_particle..self.curr_particle + info.amount {
+            if (id as usize) < self.particle_list.len() {
+                let pos = vec2(info.position.x() +  (rng.gen::<f32>() - 0.5), info.position.y() + (rng.gen::<f32>() - 0.5)); 
+                self.particle_list[id as usize] = ShaderParticle {
+                    position: pos,
+                    size: vec2(0.1, 0.1),
+                    rot: rng.gen::<f32>(),
+                    velocity: vec2((rng.gen::<f32>() - 0.5) * 5.0, (rng.gen::<f32>() - 0.5) * 5.0),
+                    current_frame: 0,
+                    max_lifetime: info.lifetime_ms,
+                    curr_lifetime: 0.0,
+                    behaviour: info.behaviour.into(),
+                    active: 1,
+                    particle_type: info.particle_id as i32,
+                    padding: Default::default(),
+                    ..Default::default()
+                };
+            }
+        }
+
+        self.curr_particle += info.amount;
+        if self.curr_particle > self.particle_list.len() as u32 {
+            self.curr_particle = 0;
+        }
+    }
+
     pub fn emit(&mut self, info: &ParticleEmitInfo) {
-        println!(
-            "EMITTING {} - {} AHH",
-            self.curr_particle,
-            self.curr_particle + info.amount
-        );
         for id in self.curr_particle..self.curr_particle + info.amount {
             if (id as usize) < self.particle_list.len() {
                 self.particle_list[id as usize] = ShaderParticle {
                     position: info.position,
-                    size: vec2(1.0, 1.0),
+                    size: vec2(0.1, 0.1),
                     rot: 0.0,
                     velocity: vec2(0.0, 0.0),
                     current_frame: 0,
@@ -358,6 +384,7 @@ impl ParticleSystem {
                     active: 1,
                     particle_type: info.particle_id as i32,
                     padding: Default::default(),
+                    ..Default::default()
                 };
             }
         }

@@ -27,7 +27,8 @@ struct Particle {
   float curr_lifetime;
   uint behaviour;
   bool is_active;
-  vec3 padding;
+  float animation_timer;
+  vec2 padding;
 };
 
 #endif

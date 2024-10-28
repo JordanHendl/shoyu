@@ -2,6 +2,7 @@ extern crate sdl2;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::mouse::{MouseButton, MouseState};
 use sdl2::EventPump;
 use std::collections::HashSet;
 
@@ -13,6 +14,11 @@ pub struct EventCache {
     key_held: HashSet<Keycode>,
     key_changed_to_pressed: HashSet<Keycode>,
     key_changed_to_released: HashSet<Keycode>,
+    mouse_pressed: HashSet<MouseButton>,
+    mouse_released: HashSet<MouseButton>,
+    mouse_held: HashSet<MouseButton>,
+    mouse_position: (i32, i32),
+    last_mouse_position: (i32, i32),
 }
 
 impl EventCache {
@@ -25,15 +31,25 @@ impl EventCache {
             key_held: HashSet::new(),
             key_changed_to_pressed: HashSet::new(),
             key_changed_to_released: HashSet::new(),
+            mouse_pressed: HashSet::new(),
+            mouse_released: HashSet::new(),
+            mouse_held: HashSet::new(),
+            mouse_position: (0, 0),
+            last_mouse_position: (0, 0),
         }
     }
 
     pub fn poll_events(&mut self) {
-        // Clear previous frame's pressed and released keys
+        // Clear previous frame's pressed and released keys and mouse buttons
         self.key_pressed.clear();
         self.key_released.clear();
         self.key_changed_to_pressed.clear();
         self.key_changed_to_released.clear();
+        self.mouse_pressed.clear();
+        self.mouse_released.clear();
+
+        // Update last mouse position
+        self.last_mouse_position = self.mouse_position;
 
         for event in self.event_pump.poll_iter() {
             match event {
@@ -63,6 +79,17 @@ impl EventCache {
                     self.key_released.insert(keycode);
                     self.key_held.remove(&keycode);
                 }
+                Event::MouseButtonDown { mouse_btn, .. } => {
+                    self.mouse_pressed.insert(mouse_btn);
+                    self.mouse_held.insert(mouse_btn);
+                }
+                Event::MouseButtonUp { mouse_btn, .. } => {
+                    self.mouse_released.insert(mouse_btn);
+                    self.mouse_held.remove(&mouse_btn);
+                }
+                Event::MouseMotion { x, y, .. } => {
+                    self.mouse_position = (x, y);
+                }
                 _ => {}
             }
         }
@@ -90,6 +117,26 @@ impl EventCache {
 
     pub fn is_key_changed_to_released(&self, keycode: Keycode) -> bool {
         self.key_changed_to_released.contains(&keycode)
+    }
+
+    pub fn is_mouse_pressed(&self, mouse_btn: MouseButton) -> bool {
+        self.mouse_pressed.contains(&mouse_btn)
+    }
+
+    pub fn is_mouse_released(&self, mouse_btn: MouseButton) -> bool {
+        self.mouse_released.contains(&mouse_btn)
+    }
+
+    pub fn is_mouse_held(&self, mouse_btn: MouseButton) -> bool {
+        self.mouse_held.contains(&mouse_btn)
+    }
+
+    pub fn get_mouse_position(&self) -> (i32, i32) {
+        self.mouse_position
+    }
+
+    pub fn get_last_mouse_position(&self) -> (i32, i32) {
+        self.last_mouse_position
     }
 }
 

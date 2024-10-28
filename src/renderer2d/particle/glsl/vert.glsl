@@ -11,7 +11,7 @@ layout(binding = 0) readonly buffer particle_animation {
     ParticleAnimation animations[];
 };
 
-layout(binding = 1) buffer readonly particle_buffer {
+layout(binding = 1) buffer particle_buffer {
     Particle particles[];
 };
 
@@ -61,7 +61,8 @@ void main() {
     // tex_coords.zw -> top-right corner of the texture in the atlas
     vec2 texCoordMin = animations[particle.type].regions[particle.current_frame].region.xy; // Bottom-left UV
     vec2 texCoordMax = animations[particle.type].regions[particle.current_frame].region.zw; // Top-right UV
-
+    
+    texCoordMax += texCoordMin;
     // Interpolate between the bottom-left and top-right based on vertex position
     // Map inPosition (-0.5, -0.5) to (0.5, 0.5) to texCoordMin and texCoordMax
     fragTexCoord = mix(texCoordMin, texCoordMax, inPosition * 0.5 + 0.5);
