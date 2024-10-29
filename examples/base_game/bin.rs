@@ -1,11 +1,11 @@
 use glam::*;
 use io::*;
+use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseButton;
 use shoyu::renderer2d::SpriteDrawCommand;
 use shoyu::renderer2d::SpriteInfo;
 use shoyu::renderer2d::SpriteSheetDrawCommand;
 use shoyu::renderer2d::SpriteSheetInfo;
-use shoyu::sdl2::keyboard::Keycode;
-use shoyu::sdl2::mouse::MouseButton;
 use shoyu::database::*;
 use shoyu::renderer2d::FontInfo;
 use shoyu::renderer2d::ParticleBehaviour;
