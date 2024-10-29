@@ -45,7 +45,7 @@ void update_particle(inout Particle particle) {
       particle.current_frame += 1;
     }
 
-    if(particle.current_frame > animations[particle.type].animation_count) {
+    if(particle.current_frame >= animations[particle.type].animation_count) {
       particle.current_frame = 0;
     }
 
