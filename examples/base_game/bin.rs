@@ -40,7 +40,8 @@ fn main() {
         name: "sheet",
         db_key: "character",
     });
-    let mut pos = vec2(0.0, 0.0);
+    let mut pos = vec2(512.0, 512.0);
+    let velocity = vec2(10.0, 10.0);
     let mut rot = 0.0;
     let mut sprite_id = 0;
     let mut io_controller = IOController::new(ctx.get_sdl_ctx());
@@ -73,28 +74,28 @@ fn main() {
         if io_controller
             .is_action_pressed("emit_particles")
         {
-            let pos = io_controller.get_mouse_position_interp(1024.0, 1024.0);
+            let pos = io_controller.get_mouse_position();
 
             renderer.particle_system().emit_random(&ParticleEmitInfo {
                 particle_id: 0,
                 lifetime_ms: 2000.0,
                 amount: 20,
-                position: vec2(pos.position.0 - 0.5, pos.position.1 - 0.5),
+                position: vec2(pos.position.0, pos.position.1),
                 initial_velocity: vec2(0.0, 0.0),
                 behaviour: ParticleBehaviour::GRAVITY,
             });
         }
         if io_controller.is_action_active("left") {
-            pos = vec2(pos.x() - 0.01, pos.y());
+            pos = vec2(pos.x() - velocity.x(), pos.y());
         }
         if io_controller.is_action_active("right") {
-            pos = vec2(pos.x() + 0.01, pos.y());
+            pos = vec2(pos.x() + velocity.x(), pos.y());
         }
         if io_controller.is_action_active("up") {
-            pos = vec2(pos.x(), pos.y() - 0.01);
+            pos = vec2(pos.x(), pos.y() - velocity.y());
         }
         if io_controller.is_action_active("down") {
-            pos = vec2(pos.x(), pos.y() + 0.01);
+            pos = vec2(pos.x(), pos.y() + velocity.y());
         }
         if io_controller.is_action_active("rotate") {
             rot += 1.0;
@@ -118,7 +119,7 @@ fn main() {
 
         renderer.draw_text(&TextDrawCommand {
             font,
-            position: vec2(0.0, 0.1),
+            position: vec2(40.0, 120.0),
             scale: 1.0,
             text: "The quick brown fox jumps over the lazy dog.",
             ..Default::default()

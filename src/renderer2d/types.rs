@@ -41,3 +41,6 @@ pub struct Font {
     pub font: *const TTFont,
     pub bg: Handle<BindGroup>,
 }
+
+unsafe impl Send for Font {}
+unsafe impl Sync for Font {}

@@ -102,6 +102,16 @@ impl From<ParticleBehaviour> for u32 {
     }
 }
 
+pub struct ParticleRandomEmitInfo {
+    pub particle_id: u32,
+    pub lifetime_ms: f32,
+    pub amount: u32,
+    pub center: Vec2,
+    pub position_range: FRect2D,
+    pub velocity_range: Vec2,
+    pub behaviour: ParticleBehaviour,
+}
+
 pub struct ParticleEmitInfo {
     pub particle_id: u32,
     pub lifetime_ms: f32,
@@ -111,9 +121,20 @@ pub struct ParticleEmitInfo {
     pub behaviour: ParticleBehaviour,
 }
 
+fn random_offset(min: f32, max: f32) -> f32 {
+    let _ = min;
+    let mut rng = rand::thread_rng();
+    let mut x = rng.gen::<f32>() * max;
+    if rng.gen::<bool>() {
+        x = -x;
+    }
+
+    x
+}
 #[allow(dead_code)]
 pub struct ParticleSystem {
     ctx: *mut Context,
+    dim: [f32; 2],
     vertices: Handle<Buffer>,
     indices: Handle<Buffer>,
     particle_list_gpu: Handle<Buffer>,
@@ -324,6 +345,7 @@ impl ParticleSystem {
 
         Self {
             pipelines,
+            dim: [canvas.viewport().area.w, canvas.viewport().area.h],
             timer: Timer::new(),
             ctx,
             particle_list: unsafe { std::slice::from_raw_parts_mut(ptr, MAX_PARTICLES) },
@@ -343,14 +365,28 @@ impl ParticleSystem {
     pub fn emit_random(&mut self, info: &ParticleEmitInfo) {
         let mut rng = rand::thread_rng();
 
+        let pos = super::screen_to_vulkan(info.position, self.dim[0], self.dim[1]);
+        println!(
+            "Converted: [{}, {}] -> [{}, {}]",
+            info.position.x(),
+            info.position.y(),
+            pos.x(),
+            pos.y()
+        );
         for id in self.curr_particle..self.curr_particle + info.amount {
             if (id as usize) < self.particle_list.len() {
-                let pos = vec2(info.position.x() +  (rng.gen::<f32>() - 0.5), info.position.y() + (rng.gen::<f32>() - 0.5)); 
+                let pos = vec2(
+                    pos.x() + random_offset(0.0, 0.2),
+                    pos.y() + random_offset(0.0, 0.2),
+                );
                 self.particle_list[id as usize] = ShaderParticle {
                     position: pos,
                     size: vec2(0.1, 0.1),
                     rot: rng.gen::<f32>(),
-                    velocity: vec2((rng.gen::<f32>() - 0.5) * 5.0, (rng.gen::<f32>() - 0.5) * 5.0),
+                    velocity: vec2(
+                        (rng.gen::<f32>() - 0.5) * 5.0,
+                        (rng.gen::<f32>() - 0.5) * 5.0,
+                    ),
                     current_frame: 0,
                     max_lifetime: info.lifetime_ms,
                     curr_lifetime: 0.0,

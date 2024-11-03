@@ -1,5 +1,5 @@
 pub mod types;
-use glam::{vec2, vec4};
+use glam::{vec2, vec4, Vec2};
 pub use types::*;
 pub mod resource_manager;
 pub use resource_manager::*;
@@ -59,6 +59,27 @@ impl<'a> Default for TextDrawCommand<'a> {
         }
     }
 }
+
+fn normalized_to_vulkan_f32(c: f32) -> f32 {
+    2.0 * c - 1.0
+}
+
+fn normalized_to_vulkan(c: Vec2) -> Vec2 {
+    let x = 2.0 * c.x() - 1.0;
+    let y = 2.0 * c.y() - 1.0;
+    vec2(x, y)
+}
+
+fn screen_to_normalized(coord: Vec2, w: f32, h: f32) -> Vec2 {
+    let x = coord.x() / w;
+    let y = coord.y() / h;
+    vec2(x, y)
+}
+
+fn screen_to_vulkan(coord: Vec2, w: f32, h: f32) -> Vec2 {
+    normalized_to_vulkan(screen_to_normalized(coord, w, h))
+}
+
 impl Renderer2D {
     pub fn new(ctx: &mut Context, database: Database, canvas: Canvas) -> Self {
         let display = ctx
@@ -138,7 +159,9 @@ impl Renderer2D {
 
             // Present the display image, waiting on the semaphore that will signal when our
             // drawing/blitting is done.
-            (*self.ctx).present_display(&self.display, &[self.sems[0]]).unwrap();
+            (*self.ctx)
+                .present_display(&self.display, &[self.sems[0]])
+                .unwrap();
         }
     }
     pub fn resources(&mut self) -> &mut ResourceManager {
@@ -164,9 +187,10 @@ impl Renderer2D {
                 pipeline: self.manager.gfx().text_pipeline,
             })
             .unwrap();
-
-            let mut xpos = cmd.position.x();
-            let ypos = cmd.position.y();
+            let res = self.manager.canvas().viewport().area.clone();
+            let pos = screen_to_normalized(cmd.position, res.w, res.h);
+            let mut xpos = pos.x();
+            let ypos = pos.y();
             for ch in cmd.text.chars() {
                 unsafe {
                     if let Some(g) = (*font).glyphs.get(&ch) {
@@ -231,10 +255,12 @@ impl Renderer2D {
         let transform = &mut b1.slice::<glam::Mat4>()[0];
         let camera = &mut b2.slice::<glam::Vec2>()[0];
 
+        let res = self.manager.canvas().viewport().area.clone();
+        let pos = screen_to_normalized(cmd.position, res.w, res.h);
+
         let angle_radian = cmd.rotation.to_radians();
         let scale = glam::Mat4::from_scale(glam::Vec3::new(cmd.size.x(), cmd.size.y(), 1.0));
-        let translate =
-            glam::Mat4::from_translation(glam::Vec3::new(cmd.position.x(), cmd.position.y(), 0.0));
+        let translate = glam::Mat4::from_translation(glam::Vec3::new(pos.x(), pos.y(), 0.0));
         let rotate = glam::Mat4::from_rotation_z(angle_radian);
 
         let t = translate * rotate * scale;
@@ -258,6 +284,8 @@ impl Renderer2D {
         let mut vert_alloc = self.manager.allocator().bump().unwrap();
         let mut b1 = self.manager.allocator().bump().unwrap();
         let mut b2 = self.manager.allocator().bump().unwrap();
+        let res = self.manager.canvas().viewport().area.clone();
+
         if let Some(sheet) = self.manager.fetch_sprite_sheet(cmd.sheet) {
             if let Some(bounds) = sheet.sprites.get(&cmd.sprite_id) {
                 let transform = &mut b1.slice::<glam::Mat4>()[0];
@@ -297,8 +325,9 @@ impl Renderer2D {
                 let rotate = glam::Mat4::from_rotation_z(angle_radian);
 
                 // Step 3: Translate the quad back to its original position
+                let pos = screen_to_vulkan(cmd.position, res.w, res.h);
                 let translate_back = glam::Mat4::from_translation(
-                    glam::Vec3::new(cmd.position.x(), cmd.position.y(), 0.0) + half_size,
+                    glam::Vec3::new(pos.x(), pos.y(), 0.0) + half_size,
                 );
                 let scale =
                     glam::Mat4::from_scale(glam::Vec3::new(cmd.size.x(), cmd.size.y(), 1.0));
