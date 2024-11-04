@@ -104,14 +104,14 @@ fn main() {
         renderer.begin_drawing();
         renderer.draw_sprite(&SpriteDrawCommand {
             sprite,
-            position: vec2(0.0, 0.0),
-            size: vec2(1.0, 1.0),
+            position: vec2(512.0, 512.0),
+            size: vec2(1024.0, 1024.0),
             rotation: 0.0,
         });
 
         renderer.draw_spritesheet(&SpriteSheetDrawCommand {
             position: pos,
-            size: vec2(0.2, 0.2),
+            size: vec2(128.0, 128.0),
             rotation: rot,
             sheet,
             sprite_id,

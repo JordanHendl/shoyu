@@ -117,6 +117,7 @@ pub struct ParticleEmitInfo {
     pub lifetime_ms: f32,
     pub amount: u32,
     pub position: glam::Vec2,
+    pub size: Vec2,
     pub initial_velocity: glam::Vec2,
     pub behaviour: ParticleBehaviour,
 }
@@ -366,14 +367,7 @@ impl ParticleSystem {
         let mut rng = rand::thread_rng();
 
         let pos = super::screen_to_vulkan(info.position, self.dim[0], self.dim[1]);
-        println!(
-            "Converted: [{}, {}] -> [{}, {}]",
-            info.position.x(),
-            info.position.y(),
-            pos.x(),
-            pos.y()
-        );
-        for id in self.curr_particle..self.curr_particle + info.amount {
+                for id in self.curr_particle..self.curr_particle + info.amount {
             if (id as usize) < self.particle_list.len() {
                 let pos = vec2(
                     pos.x() + random_offset(0.0, 0.2),
@@ -406,11 +400,13 @@ impl ParticleSystem {
     }
 
     pub fn emit(&mut self, info: &ParticleEmitInfo) {
+        let pos = super::screen_to_vulkan(info.position, self.dim[0], self.dim[1]);
+        let size = super::screen_to_normalized(info.size, self.dim[0], self.dim[1]);
         for id in self.curr_particle..self.curr_particle + info.amount {
             if (id as usize) < self.particle_list.len() {
                 self.particle_list[id as usize] = ShaderParticle {
-                    position: info.position,
-                    size: vec2(0.1, 0.1),
+                    position: pos,
+                    size,
                     rot: 0.0,
                     velocity: vec2(0.0, 0.0),
                     current_frame: 0,

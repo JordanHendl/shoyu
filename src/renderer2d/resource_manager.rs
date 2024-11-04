@@ -285,7 +285,7 @@ impl ResourceManager {
                                 x: x.bounds.x as f32 / dim[0] as f32,
                                 y: x.bounds.y as f32 / dim[1] as f32,
                                 w: x.bounds.x as f32 / dim[0] as f32 + x.bounds.w as f32 / dim[0] as f32,
-                                h: x.bounds.y as f32 / dim[0] as f32 + x.bounds.h as f32 / dim[1] as f32,
+                                h: x.bounds.y as f32 / dim[1] as f32 + x.bounds.h as f32 / dim[1] as f32,
                             },
                         )
                     })

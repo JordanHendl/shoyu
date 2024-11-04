@@ -25,6 +25,40 @@ layout(binding = 3) uniform camera_offset {
 };
 
 
+mat4 build_transform(vec2 position, vec2 size, float rotation) {
+    // Convert the rotation angle from degrees to radians
+    float rad = radians(rotation);
+    float cosAngle = cos(rad);
+    float sinAngle = sin(rad);
+
+    // Create the scaling matrix
+    mat4 scale = mat4(
+        size.x, 0.0,    0.0, 0.0,
+        0.0,    size.y, 0.0, 0.0,
+        0.0,    0.0,    1.0, 0.0,
+        0.0,    0.0,    0.0, 1.0
+    );
+
+    // Create the rotation matrix around the Z-axis
+    mat4 rotationZ = mat4(
+        cosAngle, -sinAngle, 0.0, 0.0,
+        sinAngle,  cosAngle, 0.0, 0.0,
+        0.0,       0.0,      1.0, 0.0,
+        0.0,       0.0,      0.0, 1.0
+    );
+
+    // Create the translation matrix
+    mat4 translation = mat4(
+        1.0, 0.0, 0.0, position.x,
+        0.0, 1.0, 0.0, position.y,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    );
+
+    // Combine translation, rotation, and scale matrices
+    return translation * rotationZ * scale;
+}
+
 
 void main() {
     // Retrieve the current particle instance
@@ -35,27 +69,12 @@ void main() {
         gl_Position = vec4(0.0); // Degenerate vertex
         return;
     }
+    
+    mat4 t = build_transform(vec2(0.0, 0.0), particle.size, particle.rotation);
 
-    // Apply particle transformation (position, rotation, scale)
-    vec2 pos = inPosition * particle.size; // Scale the quad
-    float cosRot = cos(particle.rotation);
-    float sinRot = sin(particle.rotation);
+    gl_Position = t * vec4(inPosition, 0.0, 1.0);
+    gl_Position.xy += particle.position;
 
-    // Apply rotation matrix
-    pos = vec2(
-        pos.x * cosRot - pos.y * sinRot,
-        pos.x * sinRot + pos.y * cosRot
-    );
-    
-    // Translate to the particle's world position
-    pos += particle.position;
-    pos -= camera;
-    
-    
-    // Convert to clip space
-    gl_Position = transform * vec4(pos, 0.0, 1.0);
-    
-    
     // Calculate texture coordinates based on the particle's tex_coords
     // tex_coords.xy -> bottom-left corner of the texture in the atlas
     // tex_coords.zw -> top-right corner of the texture in the atlas

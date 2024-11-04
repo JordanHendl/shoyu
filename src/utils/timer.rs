@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+#[derive(Clone)]
 pub struct Timer {
     start_time: Option<Instant>,
     elapsed: Duration,

@@ -256,18 +256,26 @@ impl Renderer2D {
         let camera = &mut b2.slice::<glam::Vec2>()[0];
 
         let res = self.manager.canvas().viewport().area.clone();
-        let pos = screen_to_normalized(cmd.position, res.w, res.h);
-
+        let size = screen_to_normalized(cmd.size, res.w, res.h);
         let angle_radian = cmd.rotation.to_radians();
-        let scale = glam::Mat4::from_scale(glam::Vec3::new(cmd.size.x(), cmd.size.y(), 1.0));
-        let translate = glam::Mat4::from_translation(glam::Vec3::new(pos.x(), pos.y(), 0.0));
+        let half_size = glam::Vec3::new(size.x() / 2.0, size.y() / 2.0, 0.0);
+
+        // Step 1: Translate to move the quad's center to the origin
+        let translate_to_origin = glam::Mat4::from_translation(-half_size);
+
+        // Step 2: Apply rotation around the origin
         let rotate = glam::Mat4::from_rotation_z(angle_radian);
 
-        let t = translate * rotate * scale;
+        // Step 3: Translate the quad back to its original position
+        let pos = screen_to_vulkan(cmd.position, res.w, res.h);
+        let translate_back =
+            glam::Mat4::from_translation(glam::Vec3::new(pos.x(), pos.y(), 0.0) + half_size);
+        let scale = glam::Mat4::from_scale(glam::Vec3::new(size.x(), size.y(), 1.0));
+
+        let t = translate_back * rotate * translate_to_origin * scale;
         *transform = t;
         *camera = glam::Vec2::new(0.0, 0.0);
         let sprite_bg = self.manager.fetch_sprite(cmd.sprite).unwrap().bg;
-
         self.cmd.append(|cmd| {
             cmd.draw_indexed(&DrawIndexed {
                 vertices: self.manager.vertices(),
@@ -288,6 +296,7 @@ impl Renderer2D {
 
         if let Some(sheet) = self.manager.fetch_sprite_sheet(cmd.sheet) {
             if let Some(bounds) = sheet.sprites.get(&cmd.sprite_id) {
+                let size = screen_to_normalized(cmd.size, res.w, res.h);
                 let transform = &mut b1.slice::<glam::Mat4>()[0];
                 let camera = &mut b2.slice::<glam::Vec2>()[0];
                 let vertices = vert_alloc.slice::<Vertex>().split_at_mut(4).0;
@@ -316,7 +325,7 @@ impl Renderer2D {
                 ]);
 
                 let angle_radian = cmd.rotation.to_radians();
-                let half_size = glam::Vec3::new(cmd.size.x() / 2.0, cmd.size.y() / 2.0, 0.0);
+                let half_size = glam::Vec3::new(size.x() / 2.0, size.y() / 2.0, 0.0);
 
                 // Step 1: Translate to move the quad's center to the origin
                 let translate_to_origin = glam::Mat4::from_translation(-half_size);
@@ -330,7 +339,7 @@ impl Renderer2D {
                     glam::Vec3::new(pos.x(), pos.y(), 0.0) + half_size,
                 );
                 let scale =
-                    glam::Mat4::from_scale(glam::Vec3::new(cmd.size.x(), cmd.size.y(), 1.0));
+                    glam::Mat4::from_scale(glam::Vec3::new(size.x(), size.y(), 1.0));
 
                 let t = translate_back * rotate * translate_to_origin * scale;
 
